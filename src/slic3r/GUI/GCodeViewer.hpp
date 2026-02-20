@@ -30,7 +30,7 @@ namespace GUI {
 class PartPlateList;
 class OpenGLManager;
 
-static const float GCODE_VIEWER_SLIDER_SCALE = 0.6f;
+static const float GCODE_VIEWER_SLIDER_SCALE = 1.0f;
 static const float SLIDER_DEFAULT_RIGHT_MARGIN  = 10.0f;
 static const float SLIDER_DEFAULT_BOTTOM_MARGIN = 10.0f;
 static const float SLIDER_RIGHT_MARGIN = 124.0f;
@@ -363,4 +363,3 @@ private:
 } // namespace Slic3r
 
 #endif // slic3r_GCodeViewer_hpp_
-
