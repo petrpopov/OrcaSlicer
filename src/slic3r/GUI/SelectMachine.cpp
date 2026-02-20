@@ -38,6 +38,7 @@
 #include "Notebook.hpp"
 #include "BitmapCache.hpp"
 #include "BindDialog.hpp"
+#include "slic3r/Utils/Http.hpp"
 
 namespace Slic3r { namespace GUI {
 
@@ -575,17 +576,26 @@ SelectMachineDialog::SelectMachineDialog(Plater *plater)
     wxBoxSizer *m_sizer_prepare = new wxBoxSizer(wxHORIZONTAL);
     wxBoxSizer *m_sizer_pcont   = new wxBoxSizer(wxVERTICAL);
 
+    m_button_bambu_connect = new Button(m_panel_prepare, _L("BBL Connect"));
+    m_button_bambu_connect->SetStyle(ButtonStyle::Regular, ButtonType::Choice);
+    m_button_bambu_connect->Bind(wxEVT_BUTTON, &SelectMachineDialog::on_bambu_connect_btn, this);
+
     m_button_ensure = new Button(m_panel_prepare, _L("Send"));
     m_button_ensure->SetStyle(ButtonStyle::Confirm, ButtonType::Choice);
     m_button_ensure->Bind(wxEVT_BUTTON, &SelectMachineDialog::on_ok_btn, this);
 
+    m_sizer_action_buttons = new wxBoxSizer(wxHORIZONTAL);
+    m_sizer_action_buttons->Add(m_button_bambu_connect, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(8));
+    m_sizer_action_buttons->Add(m_button_ensure, 0, wxALIGN_CENTER_VERTICAL);
+
     m_sizer_pcont->Add(0, 0, 1, wxEXPAND, 0);
-    m_sizer_pcont->Add(m_button_ensure, 0,wxALIGN_CENTER, 0);
+    m_sizer_pcont->Add(m_sizer_action_buttons, 0, wxALIGN_CENTER, 0);
 
     m_sizer_prepare->Add(0, 0, 1, wxTOP, FromDIP(12));
     m_sizer_prepare->Add(m_sizer_pcont, 0, wxALIGN_CENTER, 0);
 
     m_panel_prepare->SetSizer(m_sizer_prepare);
+    update_bambu_connect_button_visibility();
     m_panel_prepare->Layout();
     m_simplebook->AddPage(m_panel_prepare, wxEmptyString, true);
 
@@ -867,6 +877,7 @@ void SelectMachineDialog::update_select_layout(MachineObject *obj)
 
 void SelectMachineDialog::prepare_mode(bool refresh_button)
 {
+    update_bambu_connect_button_visibility();
     Enable_Auto_Refill(true);
     show_print_failed_info(false);
 
@@ -2128,6 +2139,48 @@ void SelectMachineDialog::on_ok_btn(wxCommandEvent &event)
     {
         this->on_send_print();
     }
+}
+
+void SelectMachineDialog::on_bambu_connect_btn(wxCommandEvent &)
+{
+    if (m_print_type != PrintFromType::FROM_NORMAL || m_plater == nullptr)
+        return;
+
+    Enable_Send_Button(false);
+    if (m_button_bambu_connect)
+        m_button_bambu_connect->Disable();
+
+    const int result = m_plater->send_gcode(m_print_plate_idx, nullptr);
+    if (result < 0) {
+        wxString msg = _L("Abnormal print file data. Please slice again");
+        show_error(this, msg, false);
+        Enable_Send_Button(true);
+        update_bambu_connect_button_visibility();
+        return;
+    }
+
+    PrintPrepareData print_data;
+    m_plater->get_print_job_data(&print_data);
+    if (print_data._3mf_path.empty() || !boost::filesystem::exists(print_data._3mf_path)) {
+        show_error(this, _L("Failed to prepare the print file for Bambu Connect."), false);
+        Enable_Send_Button(true);
+        update_bambu_connect_button_visibility();
+        return;
+    }
+
+    const std::string normalized_path = [&print_data]() {
+        std::string path = print_data._3mf_path.string();
+        std::replace(path.begin(), path.end(), '\\', '/');
+        return path;
+    }();
+
+    const std::string uri = build_bambu_connect_uri(normalized_path);
+    if (!launch_bambu_connect_uri(uri)) {
+        show_error(this, _L("Unable to launch Bambu Connect. Please make sure it is installed and registered."), false);
+    }
+
+    Enable_Send_Button(true);
+    update_bambu_connect_button_visibility();
 }
 
 wxString SelectMachineDialog::format_steel_name(NozzleType type)
@@ -3661,6 +3714,45 @@ void SelectMachineDialog::Enable_Send_Button(bool en)
     }
 }
 
+void SelectMachineDialog::update_bambu_connect_button_visibility()
+{
+    if (!m_button_bambu_connect)
+        return;
+
+    const bool enabled = m_print_type == PrintFromType::FROM_NORMAL &&
+                         wxGetApp().app_config &&
+                         wxGetApp().app_config->get_bool("use_bambu_connect");
+    const bool was_shown = m_button_bambu_connect->IsShown();
+    m_button_bambu_connect->Show(enabled);
+    m_button_bambu_connect->Enable(enabled);
+    if (was_shown != enabled) {
+        if (m_panel_prepare)
+            m_panel_prepare->Layout();
+        Layout();
+    }
+}
+
+std::string SelectMachineDialog::build_bambu_connect_uri(const std::string& file_path) const
+{
+    if (file_path.empty())
+        return {};
+
+    const std::string file_name = boost::filesystem::path(file_path).filename().string();
+    return std::string("bambu-connect://import-file?path=") + Http::url_encode(file_path) +
+           "&name=" + Http::url_encode(file_name) +
+           "&version=1.0.0";
+}
+
+bool SelectMachineDialog::launch_bambu_connect_uri(const std::string& uri) const
+{
+    if (uri.empty())
+        return false;
+    BOOST_LOG_TRIVIAL(info) << "bambu_connect: launch uri=" << uri;
+    const bool ok = wxLaunchDefaultBrowser(from_u8(uri));
+    BOOST_LOG_TRIVIAL(info) << "bambu_connect: launch ok=" << (ok ? "true" : "false");
+    return ok;
+}
+
 void SelectMachineDialog::on_dpi_changed(const wxRect &suggested_rect)
 {
     print_time->msw_rescale();
@@ -3674,6 +3766,8 @@ void SelectMachineDialog::on_dpi_changed(const wxRect &suggested_rect)
         if (img_amsmapping_tip)img_amsmapping_tip->SetBitmap(ams_mapping_help_icon->bmp());
     }
     m_button_ensure->Rescale(); // ORCA
+    if (m_button_bambu_connect)
+        m_button_bambu_connect->Rescale();
     m_status_bar->msw_rescale();
 
     for (auto material1 : m_materialList) {
