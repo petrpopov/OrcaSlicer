@@ -9,6 +9,7 @@
 #include "format.hpp"
 
 #include "libslic3r/PrintConfig.hpp"
+#include "libslic3r/Color.hpp"
 
 #include <regex>
 #include <wx/numformatter.h>
@@ -1853,7 +1854,7 @@ void ColourPicker::draw_bmp_btn(wxColourPickerCtrl* field, wxColour color)
         if (!dc.IsOk()) return bmp;
         wxGCDC dc2(dc); // just use wxGCDC since bitmap button only used for windows
 
-        dc2.SetPen(focus ? wxPen(wxColour(StateColor::darkModeColorFor(wxColour("#009688"))), 1) : *wxTRANSPARENT_PEN);
+        dc2.SetPen(focus ? wxPen(wxColour(StateColor::darkModeColorFor(wxColour(ColorRGB::ORCA().r_uchar(), ColorRGB::ORCA().g_uchar(), ColorRGB::ORCA().b_uchar()))), 1) : *wxTRANSPARENT_PEN);
         dc2.SetBrush(wxBrush(StateColor::darkModeColorFor(bg_color)));
         dc2.DrawRoundedRectangle(btn->GetRect(), btn->FromDIP(4));
 

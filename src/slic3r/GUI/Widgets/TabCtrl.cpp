@@ -1,4 +1,5 @@
 #include "TabCtrl.hpp"
+#include "libslic3r/Color.hpp"
 
 #include <wx/dc.h>
 
@@ -329,7 +330,8 @@ void TabCtrl::doRender(wxDC& dc)
 #else
     dc.SetPen(wxPen(border_color.colorForStates(states), border_width));
     dc.DrawLine(0, size.y - BS2, size.x, size.y - BS2);
-    wxColour c("#009688"); // ORCA selected tab underline stroke color
+    const auto c_rgb = Slic3r::ColorRGB::ORCA();
+    wxColour c(c_rgb.r_uchar(), c_rgb.g_uchar(), c_rgb.b_uchar()); // selected tab underline follows accent
     dc.SetPen(wxPen(c, 1));
     dc.SetBrush(c);
     dc.DrawRoundedRectangle(x1 - radius, size.y - BS2 - border_width * 3, x2 + radius * 2 - x1, border_width * 3, radius);

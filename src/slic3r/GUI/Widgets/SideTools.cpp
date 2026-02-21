@@ -4,12 +4,20 @@
 #include <wx/dcgraph.h>
 #include "Label.hpp"
 #include "StateColor.hpp"
+#include "libslic3r/Color.hpp"
 #include "../GUI_App.hpp"
 #include "../wxExtensions.hpp"
 #include "../I18N.hpp"
 #include "../GUI.hpp"
 
 namespace Slic3r { namespace GUI {
+namespace {
+wxColour accent_wx_color()
+{
+    const auto c = Slic3r::ColorRGB::ORCA();
+    return wxColour(c.r_uchar(), c.g_uchar(), c.b_uchar());
+}
+}
 	SideToolsPanel::SideToolsPanel(wxWindow *parent, wxWindowID id, const wxPoint &pos, const wxSize &size)
 {
     wxPanel::Create(parent, id, pos, size);
@@ -148,8 +156,8 @@ void SideToolsPanel::doRender(wxDC &dc)
     //}
 
     if (m_none_printer) {
-        dc.SetPen(StateColor::darkModeColorFor(SIDE_TOOLS_BRAND));   // ORCA: Sidebar header background color - Fix for dark mode compability
-        dc.SetBrush(StateColor::darkModeColorFor(SIDE_TOOLS_BRAND)); // ORCA: Sidebar header background color - Fix for dark mode compability
+        dc.SetPen(StateColor::darkModeColorFor(accent_wx_color()));
+        dc.SetBrush(StateColor::darkModeColorFor(accent_wx_color()));
         dc.DrawRectangle(0, 0, size.x, size.y);
 
         dc.DrawBitmap(m_none_printing_img.bmp(), left, (size.y - m_none_printing_img.GetBmpSize().y) / 2);
@@ -223,7 +231,7 @@ void SideToolsPanel::doRender(wxDC &dc)
     }
 
     if (m_hover) {
-        dc.SetPen(SIDE_TOOLS_BRAND);
+        dc.SetPen(accent_wx_color());
         dc.SetBrush(*wxTRANSPARENT_BRUSH);
         dc.DrawRectangle(0, 0, size.x, size.y);
     }
@@ -525,8 +533,8 @@ void SideTools::show_status(int status)
     else if ((status & (int)MonitorStatus::MONITOR_CONNECTING) != 0) {
         m_hyperlink->Hide();
         m_connection_info->SetLabel(_L("Connecting..."));
-        m_connection_info->SetBackgroundColor(0x009688);
-        m_connection_info->SetBorderColor(0x009688);
+        m_connection_info->SetBackgroundColor(accent_wx_color());
+        m_connection_info->SetBorderColor(accent_wx_color());
         m_connection_info->Show();
         m_more_button->Hide();
         m_side_error_panel->Hide();

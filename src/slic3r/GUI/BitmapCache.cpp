@@ -1,12 +1,15 @@
 #include "BitmapCache.hpp"
 
 #include "libslic3r/Utils.hpp"
+#include "libslic3r/Color.hpp"
 #include "../Utils/MacDarkMode.hpp"
 #include "GUI.hpp"
 #include "GUI_Utils.hpp"
 
 #include <boost/nowide/cstdio.hpp>
 #include <boost/filesystem.hpp>
+#include <algorithm>
+#include <cstdio>
 
 #ifdef __WXGTK2__
     // Broken alpha workaround
@@ -21,6 +24,32 @@
 #include "3DScene.hpp"
 
 namespace Slic3r { namespace GUI {
+
+namespace {
+std::string accent_hex(bool dark_mode, bool hovered = false)
+{
+    const auto c = Slic3r::ColorRGB::ORCA();
+    int r = (int) c.r_uchar();
+    int g = (int) c.g_uchar();
+    int b = (int) c.b_uchar();
+
+    if (dark_mode) {
+        r = (int) (r * 0.68f);
+        g = (int) (g * 0.68f);
+        b = (int) (b * 0.68f);
+    }
+
+    if (hovered) {
+        r = std::min(255, (int) (r + (255 - r) * 0.12f));
+        g = std::min(255, (int) (g + (255 - g) * 0.12f));
+        b = std::min(255, (int) (b + (255 - b) * 0.12f));
+    }
+
+    char out[8];
+    ::snprintf(out, sizeof(out), "#%02X%02X%02X", r, g, b);
+    return out;
+}
+} // namespace
 
 BitmapCache::BitmapCache()
 {
@@ -324,8 +353,14 @@ wxBitmap* BitmapCache::load_svg(const std::string &bitmap_name, unsigned target_
 
     // map of color replaces
     std::map<std::string, std::string> replaces;
-    replaces["\"#0x00AE42\""] = "\"#009688\"";
-    replaces["\"#00FF00\""] = "\"#52c7b8\"";
+    const std::string accent = accent_hex(dark_mode);
+    const std::string accent_hover = accent_hex(dark_mode, true);
+    replaces["\"#0x00AE42\""] = "\"" + accent + "\"";
+    replaces["\"#00FF00\""] = "\"" + accent_hover + "\"";
+    replaces["\"#009688\""] = "\"" + accent + "\"";
+    replaces["#009688"] = accent;
+    replaces["\"#52c7b8\""] = "\"" + accent_hover + "\"";
+    replaces["#52c7b8"] = accent_hover;
     if (dark_mode) {
         replaces["\"#262E30\""] = "\"#EFEFF0\"";
         replaces["\"#323A3D\""] = "\"#B3B3B5\"";
@@ -335,7 +370,6 @@ wxBitmap* BitmapCache::load_svg(const std::string &bitmap_name, unsigned target_
         replaces["\"#6B6B6B\""] = "\"#818182\"";
         replaces["\"#909090\""] = "\"#FFFFFF\"";
         replaces["\"#00FF00\""] = "\"#FF0000\"";
-        replaces["\"#009688\""] = "\"#00675b\"";
         replaces["\"#F1F1F1\""] = "\"#36363B\"";
         replaces["#DBDBDB"] = "#4A4A51"; // ORCA border color
         replaces["#F0F0F1"] = "#333337"; // ORCA disabled background color
@@ -344,11 +378,10 @@ wxBitmap* BitmapCache::load_svg(const std::string &bitmap_name, unsigned target_
         replaces["#949494"] = "#7C8282"; // ORCA replace icon line color for light theme
     }
 
-    if (strstr(bitmap_name.c_str(), "toggle_on") != NULL && dark_mode) // ORCA only replace color of toggle button
-        replaces["#009688"] = "#00675b";
-
-    if (!new_color.empty())
+    if (!new_color.empty()) {
         replaces["\"#009688\""] = "\"" + new_color + "\"";
+        replaces["#009688"] = new_color;
+    }
 
      NSVGimage *image = nullptr;
     if (strstr(bitmap_name.c_str(), "printer_thumbnail") == NULL) {

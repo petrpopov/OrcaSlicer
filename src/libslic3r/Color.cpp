@@ -6,6 +6,32 @@
 static const float INV_255 = 1.0f / 255.0f;
 
 namespace Slic3r {
+namespace {
+const ColorRGB k_orca_default(static_cast<unsigned char>(0), static_cast<unsigned char>(150), static_cast<unsigned char>(136));
+ColorRGB       g_orca_color = k_orca_default;
+}
+
+ColorRGB ColorRGB::ORCA()
+{
+    return g_orca_color;
+}
+
+void ColorRGB::set_orca(const ColorRGB& color)
+{
+    g_orca_color = color;
+}
+
+void ColorRGB::reset_orca()
+{
+    g_orca_color = k_orca_default;
+}
+
+ColorRGBA ColorRGBA::ORCA()
+{
+    const auto c = ColorRGB::ORCA();
+    return {c.r(), c.g(), c.b(), 1.0f};
+}
+
 bool color_is_equal(const RGBA a, const RGBA& b)
 {
     for (size_t i = 0; i < 4; i++) {
@@ -425,4 +451,3 @@ unsigned char picking_checksum_alpha_channel(unsigned char red, unsigned char gr
 }
 
 } // namespace Slic3r
-

@@ -56,6 +56,7 @@
 #include "libslic3r/Format/bbs_3mf.hpp"
 #include "libslic3r/GCode/ThumbnailData.hpp"
 #include "libslic3r/Model.hpp"
+#include "libslic3r/Color.hpp"
 #include "libslic3r/SLA/Hollowing.hpp"
 #include "libslic3r/SLA/SupportPoint.hpp"
 #include "libslic3r/SLA/ReprojectPointsOnMesh.hpp"
@@ -1693,10 +1694,10 @@ Sidebar::Sidebar(Plater *parent)
 
         struct PanelColors {
             wxColour bg_normal = "#FFFFFF";
-            wxColour bg_focus  = "#E5F0EE";
+            wxColour bg_focus  = wxColour(ColorRGB::ORCA().r_uchar(), ColorRGB::ORCA().g_uchar(), ColorRGB::ORCA().b_uchar()).ChangeLightness(186);
             wxColour bd_normal = "#DBDBDB";
-            wxColour bd_hover  = "#009688";
-            wxColour bd_focus  = "#009688";
+            wxColour bd_hover  = wxColour(ColorRGB::ORCA().r_uchar(), ColorRGB::ORCA().g_uchar(), ColorRGB::ORCA().b_uchar());
+            wxColour bd_focus  = wxColour(ColorRGB::ORCA().r_uchar(), ColorRGB::ORCA().g_uchar(), ColorRGB::ORCA().b_uchar());
         };
         PanelColors panel_color;
 

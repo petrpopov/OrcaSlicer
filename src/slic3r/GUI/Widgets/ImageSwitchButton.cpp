@@ -4,6 +4,7 @@
 #include "../wxExtensions.hpp"
 
 #include "slic3r/GUI/I18N.hpp"
+#include "libslic3r/Color.hpp"
 #include <wx/dcclient.h>
 #include <wx/dcgraph.h>
 
@@ -27,8 +28,13 @@ EVT_PAINT(FanSwitchButton::paintEvent)
 
 END_EVENT_TABLE()
 
-static const wxColour DEFAULT_HOVER_COL = wxColour(0, 150, 136);
 static const wxColour DEFAULT_PRESS_COL = wxColour(238, 238, 238);
+
+static wxColour accent_wx_color()
+{
+    const auto c = Slic3r::ColorRGB::ORCA();
+    return wxColour(c.r_uchar(), c.g_uchar(), c.b_uchar());
+}
 
 ImageSwitchButton::ImageSwitchButton(wxWindow *parent, ScalableBitmap &img_on, ScalableBitmap &img_off, long style)
     : text_color(std::make_pair(0x6B6B6B, (int) StateColor::Disabled), std::make_pair(*wxBLACK, (int) StateColor::Normal))
@@ -39,8 +45,9 @@ ImageSwitchButton::ImageSwitchButton(wxWindow *parent, ScalableBitmap &img_on, S
     m_off        = img_off;
     background_color = StateColor(std::make_pair(*wxWHITE, (int) StateColor::Disabled), std::make_pair(DEFAULT_PRESS_COL, (int) StateColor::Pressed),
                                   std::make_pair(*wxWHITE, (int) StateColor::Normal));
-    border_color = StateColor(std::make_pair(*wxWHITE, (int) StateColor::Disabled), std::make_pair(DEFAULT_HOVER_COL, (int) StateColor::Focused),
-                              std::make_pair(DEFAULT_HOVER_COL, (int) StateColor::Hovered), std::make_pair(*wxWHITE, (int) StateColor::Normal));
+    const wxColour accent = accent_wx_color();
+    border_color = StateColor(std::make_pair(*wxWHITE, (int) StateColor::Disabled), std::make_pair(accent, (int) StateColor::Focused),
+                              std::make_pair(accent, (int) StateColor::Hovered), std::make_pair(*wxWHITE, (int) StateColor::Normal));
 
     StaticBox::Create(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, style);
 
@@ -200,8 +207,9 @@ FanSwitchButton::FanSwitchButton(wxWindow* parent, ScalableBitmap& img_on, Scala
     m_off = img_off;
     background_color = StateColor(std::make_pair(*wxWHITE, (int)StateColor::Disabled), std::make_pair(DEFAULT_PRESS_COL, (int)StateColor::Pressed),
         std::make_pair(*wxWHITE, (int)StateColor::Normal));
-    border_color = StateColor(std::make_pair(*wxWHITE, (int)StateColor::Disabled), std::make_pair(DEFAULT_HOVER_COL, (int)StateColor::Focused),
-        std::make_pair(DEFAULT_HOVER_COL, (int)StateColor::Hovered), std::make_pair(*wxWHITE, (int)StateColor::Normal));
+    const wxColour accent = accent_wx_color();
+    border_color = StateColor(std::make_pair(*wxWHITE, (int)StateColor::Disabled), std::make_pair(accent, (int)StateColor::Focused),
+        std::make_pair(accent, (int)StateColor::Hovered), std::make_pair(*wxWHITE, (int)StateColor::Normal));
 
     StaticBox::Create(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, style);
 

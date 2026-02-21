@@ -2,6 +2,7 @@
 #include "Label.hpp"
 #include "Button.hpp"
 #include "TextCtrl.h"
+#include "libslic3r/Color.hpp"
 
 #include <wx/dcgraph.h>
 
@@ -24,9 +25,10 @@ SpinInput::SpinInput()
     : label_color(std::make_pair(0x6B6B6B, (int) StateColor::Disabled), std::make_pair(0x6B6B6B, (int) StateColor::Normal))
     , text_color(std::make_pair(0x6B6B6B, (int) StateColor::Disabled), std::make_pair(0x262E30, (int) StateColor::Normal))
 {
+    const auto accent = Slic3r::ColorRGB::ORCA();
     radius = 0;
     border_width     = 1;
-    border_color     = StateColor(std::make_pair(0xDBDBDB, (int) StateColor::Disabled), std::make_pair(0x009688, (int) StateColor::Hovered),
+    border_color     = StateColor(std::make_pair(0xDBDBDB, (int) StateColor::Disabled), std::make_pair(wxColour(accent.r_uchar(), accent.g_uchar(), accent.b_uchar()), (int) StateColor::Hovered),
                               std::make_pair(0xDBDBDB, (int) StateColor::Normal));
     background_color = StateColor(std::make_pair(0xF0F0F1, (int) StateColor::Disabled), std::make_pair(*wxWHITE, (int) StateColor::Normal));
 }

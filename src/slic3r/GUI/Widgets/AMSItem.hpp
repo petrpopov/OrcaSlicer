@@ -8,13 +8,21 @@
 #include "../DeviceManager.hpp"
 #include "slic3r/GUI/Event.hpp"
 #include "slic3r/GUI/AmsMappingPopup.hpp"
+#include "libslic3r/Color.hpp"
 #include <wx/simplebook.h>
 #include <wx/hyperlink.h>
 #include <wx/animate.h>
 #include <wx/dynarray.h>
 
+namespace Slic3r { namespace GUI {
+inline wxColour ams_control_brand_colour()
+{
+    const auto c = Slic3r::ColorRGB::ORCA();
+    return wxColour(c.r_uchar(), c.g_uchar(), c.b_uchar());
+}
+}} // namespace Slic3r::GUI
 
-#define AMS_CONTROL_BRAND_COLOUR wxColour(0, 150, 136)
+#define AMS_CONTROL_BRAND_COLOUR Slic3r::GUI::ams_control_brand_colour()
 #define AMS_CONTROL_GRAY700 wxColour(107, 107, 107)
 #define AMS_CONTROL_GRAY800 wxColour(50, 58, 61)
 #define AMS_CONTROL_GRAY500 wxColour(172, 172, 172)

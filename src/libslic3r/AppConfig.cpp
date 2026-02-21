@@ -331,6 +331,14 @@ void AppConfig::set_defaults()
         set_bool("show_splash_screen", true);
     }
 
+    if (get("accent_color").empty()) {
+        set("accent_color", "#042F56");
+    }
+
+    if (get("accent_color_preset").empty()) {
+        set("accent_color_preset", "matte_dark_blue");
+    }
+
     if(get("auto_arrange").empty()) {
         set_bool("auto_arrange", true);
     }

@@ -346,7 +346,7 @@ public:
     static const ImVec4 COL_TOOLBAR_BG_DARK;
     static const ImVec4 COL_SEPARATOR;
     static const ImVec4 COL_SEPARATOR_DARK;
-    static const ImVec4 COL_ORCA;
+    static ImVec4 COL_ORCA;
     static const ImVec4 COL_MODIFIED;
 
     //BBS
@@ -402,4 +402,3 @@ public:
 } // namespace Slic3r
 
 #endif // slic3r_ImGuiWrapper_hpp_
-

@@ -3,6 +3,7 @@
 //#ifdef _WIN32
 
 #include "GUI_App.hpp"
+#include "libslic3r/Color.hpp"
 #include "wxExtensions.hpp"
 #include "TabButton.hpp"
 
@@ -15,7 +16,14 @@
 wxDEFINE_EVENT(wxCUSTOMEVT_TABBOOK_SEL_CHANGED, wxCommandEvent);
 
 const static wxColour TAB_BUTTON_BG  = wxColour("#FEFFFF");
-const static wxColour TAB_BUTTON_SEL = wxColour("#BFE1DE"); // ORCA
+
+namespace {
+wxColour tab_button_selected_color()
+{
+    const auto c = Slic3r::ColorRGB::ORCA();
+    return wxColour(c.r_uchar(), c.g_uchar(), c.b_uchar()).ChangeLightness(178);
+}
+}
 
 static const wxFont& TAB_BUTTON_FONT     = Label::Body_14;
 static const wxFont& TAB_BUTTON_FONT_SEL = Label::Head_14;
@@ -71,7 +79,7 @@ void TabButtonsListCtrl::OnPaint(wxPaintEvent &)
 
     for (int idx = 0; idx < int(m_pageButtons.size()); idx++) {
         TabButton *btn = m_pageButtons[idx];
-        btn->SetBackgroundColor(idx == m_selection ? TAB_BUTTON_SEL : TAB_BUTTON_BG);
+        btn->SetBackgroundColor(idx == m_selection ? tab_button_selected_color() : TAB_BUTTON_BG);
         
         wxPoint pos = btn->GetPosition();
         wxSize size = btn->GetSize();
@@ -108,7 +116,7 @@ void TabButtonsListCtrl::SetSelection(int sel)
         m_pageButtons[m_selection]->SetFont(TAB_BUTTON_FONT);
     }
     m_selection = sel;
-    m_pageButtons[m_selection]->SetBackgroundColor(TAB_BUTTON_SEL);
+    m_pageButtons[m_selection]->SetBackgroundColor(tab_button_selected_color());
     m_pageButtons[m_selection]->SetFont(TAB_BUTTON_FONT_SEL);
     Refresh();
 }
@@ -212,5 +220,4 @@ void TabButtonsListCtrl::SetFooterText(const wxString& text)
 }
 
 //#endif // _WIN32
-
 

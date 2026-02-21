@@ -1,5 +1,6 @@
 #include "ProgressBar.hpp"
 #include "../I18N.hpp"
+#include "libslic3r/Color.hpp"
 #include <wx/dcclient.h>
 #include <wx/dcgraph.h>
 #include "Label.hpp"
@@ -13,6 +14,8 @@ END_EVENT_TABLE()
 
 ProgressBar::ProgressBar(wxWindow *parent, wxWindowID id, int max, const wxPoint &pos, const wxSize &size, bool shown)
 {
+    const auto accent = Slic3r::ColorRGB::ORCA();
+    m_progress_colour = wxColour(accent.r_uchar(), accent.g_uchar(), accent.b_uchar());
     m_shownumber = shown;
     SetBackgroundColour(wxColour(255,255,255));
 
