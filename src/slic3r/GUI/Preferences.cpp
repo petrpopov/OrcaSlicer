@@ -18,6 +18,7 @@
 #include "slic3r/Utils/bambu_networking.hpp"
 #include "slic3r/Utils/NetworkAgent.hpp"
 #include "DownloadProgressDialog.hpp"
+#include "wxExtensions.hpp"
 
 #ifdef __WINDOWS__
 #ifdef _MSW_DARK_MODE
@@ -26,6 +27,29 @@
 #endif //__WINDOWS__
 
 namespace Slic3r { namespace GUI {
+
+namespace {
+const char* ACCENT_PRESET_MATTE_BLUE  = "matte_dark_blue";
+const char* ACCENT_PRESET_BAMBU_GREEN = "bambu_green";
+const char* ACCENT_PRESET_ORCA        = "orca_default";
+const char* ACCENT_PRESET_CUSTOM      = "custom";
+
+std::string accent_color_for_preset(const std::string& preset)
+{
+    if (preset == ACCENT_PRESET_BAMBU_GREEN)
+        return "#00AE42";
+    if (preset == ACCENT_PRESET_ORCA)
+        return "#009688";
+    if (preset == ACCENT_PRESET_MATTE_BLUE)
+        return "#042F56";
+    return "";
+}
+
+wxString color_to_hex_rgb(const wxColour& color)
+{
+    return wxString::Format("#%02X%02X%02X", color.Red(), color.Green(), color.Blue());
+}
+} // namespace
 
 class MyscrolledWindow : public wxScrolledWindow {
 public:
@@ -1313,6 +1337,63 @@ void PreferencesDialog::create_items()
 
     auto item_use_bambu_connect = create_item_checkbox(_L("Use Bambu Lab Connect"), _L("Enable one-click handoff of print jobs to Bambu Connect."), "use_bambu_connect");
     g_sizer->Add(item_use_bambu_connect);
+
+    std::vector<wxString> accent_preset_labels = {_L("Matte Dark Blue"), _L("Bambu Green"), _L("Orca Default"), _L("Custom")};
+    std::vector<std::string> accent_preset_keys = {ACCENT_PRESET_MATTE_BLUE, ACCENT_PRESET_BAMBU_GREEN, ACCENT_PRESET_ORCA, ACCENT_PRESET_CUSTOM};
+    unsigned int accent_preset_index = 0;
+    const auto current_accent_preset = app_config->get("accent_color_preset");
+    if (!current_accent_preset.empty()) {
+        auto it = std::find(accent_preset_keys.begin(), accent_preset_keys.end(), current_accent_preset);
+        if (it != accent_preset_keys.end())
+            accent_preset_index = static_cast<unsigned int>(std::distance(accent_preset_keys.begin(), it));
+    }
+
+    auto [item_accent_preset, accent_preset_combo] = create_item_combobox_base(
+        _L("Theme accent preset"),
+        _L("Choose a predefined accent color for highlighted UI elements. (Requires restart)"),
+        "accent_color_preset",
+        accent_preset_labels,
+        accent_preset_index
+    );
+    accent_preset_combo->GetDropDown().Bind(wxEVT_COMBOBOX, [this, accent_preset_keys](wxCommandEvent& e) {
+        const std::string selected = accent_preset_keys[e.GetSelection()];
+        app_config->set("accent_color_preset", selected);
+        const std::string preset_color = accent_color_for_preset(selected);
+        if (!preset_color.empty())
+            app_config->set("accent_color", preset_color);
+
+        MessageDialog restart_hint(this, _L("Theme accent color changes require application restart to apply everywhere."), _L("Restart Required"), wxOK | wxICON_INFORMATION);
+        restart_hint.ShowModal();
+        e.Skip();
+    });
+    g_sizer->Add(item_accent_preset);
+
+    auto item_accent_color = create_item_button(
+        _L("Theme accent color (Requires restart)"),
+        _L("Pick") + " " + dots,
+        _L("Choose custom accent color for highlighted UI elements."),
+        _L("Open system color picker"),
+        [this]() {
+            wxColourData data;
+            data.SetChooseFull(true);
+            const wxColour current_color(wxString::FromUTF8(app_config->get("accent_color")));
+            if (current_color.IsOk())
+                data.SetColour(current_color);
+
+            const wxColour previous_color = data.GetColour();
+            wxColourData picked_data = show_sys_picker_dialog(this, data);
+            const wxColour selected_color = picked_data.GetColour();
+            if (!selected_color.IsOk() || selected_color == previous_color)
+                return;
+
+            app_config->set("accent_color", color_to_hex_rgb(selected_color).ToStdString());
+            app_config->set("accent_color_preset", ACCENT_PRESET_CUSTOM);
+
+            MessageDialog restart_hint(this, _L("Theme accent color changes require application restart to apply everywhere."), _L("Restart Required"), wxOK | wxICON_INFORMATION);
+            restart_hint.ShowModal();
+        }
+    );
+    g_sizer->Add(item_accent_color);
 
     //auto item_hints            = create_item_checkbox(_L("Show \"Daily Tips\" after start"), page, _L("If enabled, useful hints are displayed at startup."), "show_daily_tips");
     //g_sizer->Add(item_hints);

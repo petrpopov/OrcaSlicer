@@ -3,10 +3,12 @@
 #include "GUI_Init.hpp"
 #include "GUI_ObjectList.hpp"
 #include "GUI_Factories.hpp"
+#include "ImGuiWrapper.hpp"
 #include "slic3r/GUI/UserManager.hpp"
 #include "slic3r/GUI/TaskManager.hpp"
 #include "format.hpp"
 #include "libslic3r_version.h"
+#include "libslic3r/Color.hpp"
 #include "Downloader.hpp"
 
 // Localization headers: include libslic3r version first so everything in this file
@@ -177,6 +179,26 @@ struct StaticBambuLib
 
 namespace Slic3r {
 namespace GUI {
+
+namespace {
+void apply_accent_color_from_config(AppConfig* config)
+{
+    if (config == nullptr) {
+        ColorRGB::reset_orca();
+        return;
+    }
+
+    ColorRGB parsed;
+    const std::string accent_hex = config->get("accent_color");
+    if (!accent_hex.empty() && decode_color(accent_hex, parsed)) {
+        ColorRGB::set_orca(parsed);
+    } else {
+        ColorRGB::reset_orca();
+    }
+
+    ImGuiWrapper::COL_ORCA = ImGuiWrapper::to_ImVec4(ColorRGBA::ORCA());
+}
+} // namespace
 
 class MainFrame;
 
@@ -2464,6 +2486,7 @@ void GUI_App::init_app_config()
 #endif // _WIN32
     }
     set_logging_level(Slic3r::level_string_to_boost(app_config->get("log_severity_level")));
+    apply_accent_color_from_config(app_config);
 
 }
 
