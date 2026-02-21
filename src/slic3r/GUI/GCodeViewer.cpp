@@ -9,6 +9,7 @@
 #include "libslic3r/Utils.hpp"
 #include "libslic3r/LocalesUtils.hpp"
 #include "libslic3r/PresetBundle.hpp"
+#include "libslic3r/Color.hpp"
 //BBS: add convex hull logic for toolpath check
 #include "libslic3r/Geometry/ConvexHull.hpp"
 
@@ -47,6 +48,14 @@
 
 namespace Slic3r {
 namespace GUI {
+
+namespace {
+ImColor accent_imcolor()
+{
+    const auto c = ColorRGBA::ORCA();
+    return ImColor((int) c.r_uchar(), (int) c.g_uchar(), (int) c.b_uchar(), 255);
+}
+} // namespace
 
 //BBS translation of EViewType
 //const std::string EViewType_Map[(int) GCodeViewer::EViewType::Count] = {
@@ -2680,7 +2689,7 @@ void GCodeViewer::render_legend_color_arr_recommen(float window_padding)
     auto link_text = [&](const std::string &label) {
         ImVec2 wiki_part_size = ImGui::CalcTextSize(label.c_str());
 
-        ImColor HyperColor = ImColor(0, 150, 136, 255).Value;
+        ImColor HyperColor = accent_imcolor();
         ImGui::PushStyleColor(ImGuiCol_Text, HyperColor.Value);
         imgui.text(label.c_str());
         ImGui::PopStyleColor();
@@ -2706,7 +2715,7 @@ void GCodeViewer::render_legend_color_arr_recommen(float window_padding)
     auto link_text_set_to_optional = [&](const std::string &label) {
         ImVec2 wiki_part_size = ImGui::CalcTextSize(label.c_str());
 
-        ImColor HyperColor = ImColor(0, 150, 136, 255).Value;
+        ImColor HyperColor = accent_imcolor();
         ImGui::PushStyleColor(ImGuiCol_Text, HyperColor.Value);
         imgui.text(label.c_str());
         ImGui::PopStyleColor();
@@ -2734,7 +2743,7 @@ void GCodeViewer::render_legend_color_arr_recommen(float window_padding)
     auto link_filament_group_wiki = [&](const std::string& label) {
         ImVec2 wiki_part_size = ImGui::CalcTextSize(label.c_str());
 
-        ImColor HyperColor = ImColor(0, 150, 136, 255).Value;
+        ImColor HyperColor = accent_imcolor();
         ImGui::PushStyleColor(ImGuiCol_Text, HyperColor.Value);
         imgui.text(label.c_str());
         ImGui::PopStyleColor();
@@ -4393,4 +4402,3 @@ void GCodeViewer::render_slider(int canvas_width, int canvas_height) {
 
 } // namespace GUI
 } // namespace Slic3r
-

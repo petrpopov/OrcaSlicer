@@ -1,5 +1,6 @@
 #include "Button.hpp"
 #include "Label.hpp"
+#include "libslic3r/Color.hpp"
 
 #include <wx/dcgraph.h>
 #include <wx/tipwin.h>
@@ -19,6 +20,19 @@ EVT_PAINT(Button::paintEvent)
 
 END_EVENT_TABLE()
 
+namespace {
+wxColour accent_wx_color()
+{
+    const auto c = Slic3r::ColorRGB::ORCA();
+    return wxColour(c.r_uchar(), c.g_uchar(), c.b_uchar());
+}
+
+wxColour accent_hover_wx_color()
+{
+    return accent_wx_color().ChangeLightness(112);
+}
+}
+
 /*
  * Called by the system of by wxWidgets when the panel needs
  * to be redrawn. You can also trigger this call by
@@ -28,10 +42,12 @@ END_EVENT_TABLE()
 Button::Button()
     : paddingSize(10, 8)
 {
+    const wxColour accent        = accent_wx_color();
+    const wxColour accent_hover  = accent_hover_wx_color();
     background_color = StateColor(
         std::make_pair(0xF0F0F1, (int) StateColor::Disabled),
-        std::make_pair(0x52c7b8, (int) StateColor::Hovered | StateColor::Checked),
-        std::make_pair(0x009688, (int) StateColor::Checked),
+        std::make_pair(accent_hover, (int) StateColor::Hovered | StateColor::Checked),
+        std::make_pair(accent, (int) StateColor::Checked),
         std::make_pair(*wxLIGHT_GREY, (int) StateColor::Hovered),
         std::make_pair(*wxWHITE, (int) StateColor::Normal));
     text_color       = StateColor(
@@ -229,12 +245,31 @@ void Button::SetStyle(const ButtonStyle style, const ButtonType type)
     );
     bg_color.setTakeFocusedAsHovered(false);
     this->SetBackgroundColor(bg_color);
-    wxColour focus_clr = clr_arr[is_dark ? 8 : 9];
+    const wxColour accent = accent_wx_color();
+    wxColour focus_clr = accent;
+
+    if (style == ButtonStyle::Confirm) {
+        wxColour accent_pressed = accent.ChangeLightness(95);
+        wxColour accent_hovered = accent_hover_wx_color();
+        auto confirm_bg_color = StateColor(
+            std::pair(wxColour(clr_arr[0]), (int)StateColor::Disabled),
+            std::pair(accent_pressed, (int)StateColor::Pressed),
+            std::pair(accent_hovered, (int)StateColor::Hovered),
+            std::pair(accent, (int)StateColor::Normal),
+            std::pair(accent, (int)StateColor::Enabled)
+        );
+        confirm_bg_color.setTakeFocusedAsHovered(false);
+        this->SetBackgroundColor(confirm_bg_color);
+    }
+
+    const wxColour hover_border_clr = style == ButtonStyle::Confirm ? accent_hover_wx_color() : wxColour(clr_arr[2]);
+    const wxColour normal_border_clr = style == ButtonStyle::Confirm ? accent : wxColour(clr_arr[3]);
+
     auto border_color = StateColor(
         std::pair(wxColour(clr_arr[0]), (int)StateColor::Disabled),
-        std::pair(wxColour(clr_arr[2]), (int)(StateColor::Hovered | ~StateColor::Focused)),
+        std::pair(hover_border_clr, (int)(StateColor::Hovered | ~StateColor::Focused)),
         std::pair(wxColour(focus_clr ), (int)StateColor::Focused),
-        std::pair(wxColour(clr_arr[3]), (int)StateColor::Normal)
+        std::pair(normal_border_clr, (int)StateColor::Normal)
     );
     border_color.setTakeFocusedAsHovered(false);
     this->SetBorderColor(border_color);

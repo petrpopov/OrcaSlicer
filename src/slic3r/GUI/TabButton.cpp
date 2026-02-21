@@ -1,5 +1,6 @@
 #include "TabButton.hpp"
 #include "Widgets/Label.hpp"
+#include "libslic3r/Color.hpp"
 
 #include <wx/dcclient.h>
 #include <wx/dcgraph.h>
@@ -14,23 +15,31 @@ EVT_PAINT(TabButton::paintEvent)
 
 END_EVENT_TABLE()
 
-static wxColour BORDER_HOVER_COL = wxColour(0, 150, 136);
-
 const static wxColour TAB_BUTTON_BG    = wxColour("#FEFFFF");
-const static wxColour TAB_BUTTON_SEL   = wxColour("#BFE1DE"); // ORCA
+
+namespace {
+wxColour accent_color()
+{
+    const auto c = Slic3r::ColorRGB::ORCA();
+    return wxColour(c.r_uchar(), c.g_uchar(), c.b_uchar());
+}
+}
 
 TabButton::TabButton()
     : paddingSize(18, 16) // ORCA reduce / match left margin buttons on sidebars
     , text_color(*wxBLACK)
 {
+    const wxColour accent = accent_color();
+    const wxColour accent_light = accent.ChangeLightness(178);
+
     background_color = StateColor(
-        std::make_pair(TAB_BUTTON_SEL, (int) StateColor::Checked),
+        std::make_pair(accent_light, (int) StateColor::Checked),
         std::make_pair(wxColour("#FEFFFF"), (int) StateColor::Hovered),
         std::make_pair(wxColour("#FEFFFF"), (int) StateColor::Normal));
 
     border_color = StateColor(
-        std::make_pair(TAB_BUTTON_SEL, (int) StateColor::Checked), // ORCA use same color for border to prevent 1px blank border
-        std::make_pair(BORDER_HOVER_COL, (int) StateColor::Hovered),
+        std::make_pair(accent_light, (int) StateColor::Checked),
+        std::make_pair(accent, (int) StateColor::Hovered),
         std::make_pair(wxColour("#FEFFFF"), (int)StateColor::Normal));
 }
 

@@ -28,6 +28,7 @@
 #include "nanosvg/nanosvgrast.h"
 
 #include "libslic3r/Utils.hpp"
+#include "libslic3r/Color.hpp"
 #include "GUI_App.hpp"
 #include <boost/log/trivial.hpp>
 #include <wx/dcgraph.h>
@@ -289,6 +290,28 @@ bool GLTexture::load_from_svg_files_as_sprites_array(const std::vector<std::stri
     const unsigned char hover_color_dark[3] = {60, 60, 65};
     const unsigned char normal_color_dark[3] = {182, 182, 182};
     const unsigned char disable_color_dark[3] = {76, 76, 85};
+    const ColorRGB accent = ColorRGB::ORCA();
+    const ColorRGB accent_light(
+        static_cast<unsigned char>(std::min(255, static_cast<int>(accent.r_uchar()) + 18)),
+        static_cast<unsigned char>(std::min(255, static_cast<int>(accent.g_uchar()) + 18)),
+        static_cast<unsigned char>(std::min(255, static_cast<int>(accent.b_uchar()) + 18)));
+
+    auto replace_legacy_green = [accent, accent_light](std::vector<unsigned char>& px) {
+        for (size_t i = 0; i + 3 < px.size(); i += 4) {
+            unsigned char& r = px[i + 0];
+            unsigned char& g = px[i + 1];
+            unsigned char& b = px[i + 2];
+            if (r == 0 && g == 150 && b == 136) {
+                r = accent.r_uchar();
+                g = accent.g_uchar();
+                b = accent.b_uchar();
+            } else if (r == 82 && g == 199 && b == 184) {
+                r = accent_light.r_uchar();
+                g = accent_light.g_uchar();
+                b = accent_light.b_uchar();
+            }
+        }
+    };
 
     NSVGrasterizer* rast = nsvgCreateRasterizer();
     if (rast == nullptr) {
@@ -314,6 +337,7 @@ bool GLTexture::load_from_svg_files_as_sprites_array(const std::vector<std::stri
 
         // offset by 1 to leave the first pixel empty (both in x and y)
         nsvgRasterize(rast, image, 1, 1, scale, sprite_data.data(), sprite_size_px, sprite_size_px, sprite_stride);
+        replace_legacy_green(sprite_data);
 
         ::memcpy((void*)pressed_data.data(), (const void*)sprite_data.data(), sprite_bytes);
         for (int i = 0; i < sprite_n_pixels; ++i) {

@@ -1,5 +1,6 @@
 #include "DropDown.hpp"
 #include "Label.hpp"
+#include "libslic3r/Color.hpp"
 
 #include <cstdio>
 #include <wx/display.h>
@@ -39,9 +40,9 @@ DropDown::DropDown(std::vector<Item> &items)
     , border_color(0xDBDBDB)
     , text_color(std::make_pair(0x909090, (int) StateColor::Disabled),
         std::make_pair(0x363636, (int) StateColor::Normal))
-    , selector_border_color(std::make_pair(0x009688, (int) StateColor::Hovered),
+    , selector_border_color(std::make_pair(wxColour(Slic3r::ColorRGB::ORCA().r_uchar(), Slic3r::ColorRGB::ORCA().g_uchar(), Slic3r::ColorRGB::ORCA().b_uchar()), (int) StateColor::Hovered),
         std::make_pair(*wxWHITE, (int) StateColor::Normal))
-    , selector_background_color(std::make_pair(0xBFE1DE, (int) StateColor::Checked), // ORCA updated background color for checked item
+    , selector_background_color(std::make_pair(wxColour(Slic3r::ColorRGB::ORCA().r_uchar(), Slic3r::ColorRGB::ORCA().g_uchar(), Slic3r::ColorRGB::ORCA().b_uchar()).ChangeLightness(186), (int) StateColor::Checked),
         std::make_pair(*wxWHITE, (int) StateColor::Normal))
 {
 }

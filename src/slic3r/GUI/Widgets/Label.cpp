@@ -1,6 +1,7 @@
 #include "libslic3r/Utils.hpp"
 #include "Label.hpp"
 #include "StaticBox.hpp"
+#include "libslic3r/Color.hpp"
 #include <wx/intl.h> // For wxLocale
 #include <wx/dcclient.h>
 #include <wx/settings.h>
@@ -307,7 +308,8 @@ void Label::SetWindowStyleFlag(long style)
     wxStaticText::SetWindowStyleFlag(style);
     if (style & LB_HYPERLINK) {
         this->m_color = GetForegroundColour();
-        static wxColor clr_url("#009688");
+        const auto accent = Slic3r::ColorRGB::ORCA();
+        wxColor clr_url(accent.r_uchar(), accent.g_uchar(), accent.b_uchar());
         SetFont(this->m_font.Underlined());
         SetForegroundColour(clr_url);
         SetCursor(wxCURSOR_HAND);

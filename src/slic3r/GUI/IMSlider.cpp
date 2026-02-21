@@ -1,5 +1,6 @@
 #include "IMSlider.hpp"
 #include "libslic3r/GCode.hpp"
+#include "libslic3r/Color.hpp"
 #include "GUI_App.hpp"
 #include "NotificationManager.hpp"
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
@@ -27,7 +28,11 @@ static const ImU32 BACKGROUND_COLOR_DARK  = IM_COL32(65, 65, 71, 255);
 static const ImU32 BACKGROUND_COLOR_LIGHT = IM_COL32(255, 255, 255, 255);
 static const ImU32 GROOVE_COLOR_DARK      = IM_COL32(45, 45, 49, 255);
 static const ImU32 GROOVE_COLOR_LIGHT     = IM_COL32(206, 206, 206, 255);
-static const ImU32 BRAND_COLOR            = IM_COL32(0, 150, 136, 255);
+static ImU32 brand_color()
+{
+    const auto c = ColorRGBA::ORCA();
+    return IM_COL32((int) c.r_uchar(), (int) c.g_uchar(), (int) c.b_uchar(), 255);
+}
 
 
 static int m_tick_value = -1;
@@ -503,7 +508,7 @@ bool IMSlider::horizontal_slider(const char* str_id, int* value, int v_min, int 
     const float  triangle_offsets[3] = {-3.5f * m_scale, 3.5f * m_scale, -6.06f * m_scale};
 
     const ImU32 white_bg = m_is_dark ? BACKGROUND_COLOR_DARK : BACKGROUND_COLOR_LIGHT;
-    const ImU32 handle_clr = BRAND_COLOR;
+    const ImU32 handle_clr = brand_color();
     const ImU32 handle_border_clr = m_is_dark ? BACKGROUND_COLOR_DARK : BACKGROUND_COLOR_LIGHT;
 
     // calculate groove size
@@ -884,7 +889,7 @@ bool IMSlider::vertical_slider(const char* str_id, int* higher_value, int* lower
     ImVec2 text_size;
 
     const ImU32 white_bg = m_is_dark ? BACKGROUND_COLOR_DARK : BACKGROUND_COLOR_LIGHT;
-    const ImU32 handle_clr = BRAND_COLOR;
+    const ImU32 handle_clr = brand_color();
     const ImU32 handle_border_clr = m_is_dark ? BACKGROUND_COLOR_DARK : BACKGROUND_COLOR_LIGHT;
     // calculate slider groove size
     const ImVec2 groove_start = ImVec2(pos.x + size.x - ONE_LAYER_MARGIN.x * m_scale - (ONE_LAYER_BUTTON_SIZE.x / 2) * m_scale * 0.5f - GROOVE_WIDTH * m_scale * 0.5f, pos.y + text_dummy_height);
@@ -1681,5 +1686,4 @@ std::array<int, 2> IMSlider::get_active_extruders_for_tick(int tick) const
 }
 
 } // Slic3r
-
 
