@@ -1,4 +1,5 @@
 #include "StateColor.hpp"
+#include "libslic3r/Color.hpp"
 #include <cmath>
 
 static bool gDarkMode = false;
@@ -188,6 +189,14 @@ void StateColor::SetDarkMode(bool dark) { gDarkMode = dark; }
 
 inline wxColour darkModeColorFor2(wxColour const &color)
 {
+    const auto accent_rgb = Slic3r::ColorRGB::ORCA();
+    const wxColour accent(accent_rgb.r_uchar(), accent_rgb.g_uchar(), accent_rgb.b_uchar());
+    const wxColour accent_hover = accent.ChangeLightness(112);
+    if (color == wxColour("#009688"))
+        return gDarkMode ? accent : accent;
+    if (color == wxColour("#26A69A"))
+        return gDarkMode ? accent_hover : accent_hover;
+
     if (!gDarkMode)
         return color;
     auto iter = gDarkColors.find(color);
