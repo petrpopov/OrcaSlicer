@@ -8,6 +8,12 @@
 	-webkit-user-select: none;
 }
 
+:root
+{
+	--main-color: #042F56;
+	--main-color-hover: #0A4A85;
+}
+
 html
 {
 	height:100%;
@@ -74,7 +80,7 @@ body
 {
 	font-size:28px;
 	line-height: 28px;
-	color: #009688;
+	color: var(--main-color);
 	padding: 0px 10mm;
 }
 
@@ -115,7 +121,7 @@ body
 /*---HyperLink---*/
 .HyperLink
 {
-	color: #009688;
+	color: var(--main-color);
 	text-decoration: underline;
     font-weight: 700;
 	cursor: pointer;
@@ -159,8 +165,8 @@ input[type="checkbox"]::before {
 }
 
 input[type="checkbox"]:checked {
-	border-color:#009688;
-	background-color:#009688;
+	border-color:var(--main-color);
+	background-color:var(--main-color);
 }
 
 input[type="checkbox"]:checked::before {
@@ -168,7 +174,6 @@ input[type="checkbox"]:checked::before {
 }
 
 /*----------------Light Mode-------------------*/
-
 
 
 

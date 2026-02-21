@@ -179,12 +179,12 @@ body
 
 .BtnItem:hover
 {
-	background-color: #BFE1DE; /*ORCA color with %25 opacity*/
+	background-color: var(--focus-bg-item);
 }
 
 .BtnItemSelected
 {
-	background-color: #BFE1DE; /*ORCA color with %25 opacity*/
+	background-color: var(--focus-bg-item);
 }
 
 .BtnIcon
@@ -253,8 +253,8 @@ body
 
 .MenuItem:hover
 {
-	border-color: #009688;		/*ORCA color*/
-	background-color: #E5F0EE; /*ORCA color with %25 opacity*/
+	border-color: var(--main-color);
+	background-color: var(--focus-bg-box);
 }
 
 .MenuIcon
@@ -429,7 +429,7 @@ body
 .CT_Item:hover
 {
 	cursor: pointer;
-	background-color:#009688; /*ORCA color*/
+	background-color:var(--main-color);
 	border-radius: 4px;
 	color: #fff;
 }
@@ -665,7 +665,7 @@ body
 #HotModel_RIGHT_Title:hover
 {
 	cursor: pointer;	
-	color:#009688;	
+	color:var(--main-color);	
 }
 
 .HotModelPiece
