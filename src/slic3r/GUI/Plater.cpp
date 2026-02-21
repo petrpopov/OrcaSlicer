@@ -11144,20 +11144,37 @@ void Plater::priv::on_modify_filament(SimpleEvent &evt)
     Filamentinformation *filament_info = static_cast<Filamentinformation *>(evt.GetEventObject());
     int                 res;
     std::shared_ptr<Preset> need_edit_preset;
-    {
+    const bool open_delete_flow = filament_info != nullptr && filament_info->delete_mode;
+    const std::string delete_target_name = filament_info != nullptr ? filament_info->filament_name : "";
+    wxWindow *source_window = filament_info != nullptr ? filament_info->source_window : nullptr;
+    if (open_delete_flow) {
         EditFilamentPresetDialog dlg(wxGetApp().mainframe, filament_info);
-        res = dlg.ShowModal();
-        need_edit_preset = dlg.get_need_edit_preset();
+        dlg.run_quick_delete(delete_target_name, source_window ? source_window : wxGetApp().mainframe);
+        res = wxID_OK;
+    } else {
+        EditFilamentPresetDialog dlg(wxGetApp().mainframe, filament_info);
+        if (dlg.get_total_preset_count() == 1) {
+            need_edit_preset = dlg.get_single_preset_for_edit();
+            res              = need_edit_preset ? wxID_EDIT : wxID_CANCEL;
+        } else {
+            res = dlg.ShowModal();
+            need_edit_preset = dlg.get_need_edit_preset();
+        }
     }
     wxGetApp().mainframe->update_side_preset_ui();
     update_ui_from_settings();
     sidebar->update_all_preset_comboboxes();
-    if (wxID_EDIT == res) {
+    if (wxID_EDIT == res && need_edit_preset) {
         Tab *tab = wxGetApp().get_tab(Preset::Type::TYPE_FILAMENT);
         //tab->restore_last_select_item();
         if (tab == nullptr) { return; }
         // Popup needs to be called before "restore_last_select_item", otherwise the page may not be updated
+        if (source_window && source_window->IsShown()) {
+            source_window->Hide();
+            wxGetApp().params_dialog()->set_resume_window_after_hide(source_window);
+        }
         wxGetApp().params_dialog()->Popup();
+        wxGetApp().params_dialog()->Raise();
         tab->restore_last_select_item();
         // Opening Studio and directly accessing the Filament settings interface through the edit preset button will not take effect and requires manual settings.
         tab->set_just_edit(true);

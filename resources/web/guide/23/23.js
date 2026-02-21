@@ -1,4 +1,9 @@
 var m_ProfileItem;
+var gCustomFilaments = [];
+var gCustomTypeFilters = new Set();
+var gCustomVendorFilters = new Set();
+var gCustomTypeFiltersInitialized = false;
+var gCustomVendorFiltersInitialized = false;
 
 var FilamentPriority=new Array( "pla","abs","pet","tpu","pc");
 var VendorPriority=new Array("generic");
@@ -7,6 +12,11 @@ function OnInit()
 {
 	TranslatePage();
     OnSelectMenu(1);
+	document.addEventListener('click', function(e){
+		if(!e.target.closest('.CF_FilterDropdown')){
+			CloseCustomFilterMenus();
+		}
+	});
 	
 	RequestProfile();
 	
@@ -589,24 +599,214 @@ function TestCustomFilaments()
 
 function UpdateCustomFilaments( CFList )
 {
+	gCustomFilaments = (CFList || []).map(function(pItem){
+		return {
+			id: pItem['id'] || '',
+			name: pItem['name'] || '',
+			type: pItem['type'] || 'Unknown',
+			vendor: pItem['vendor'] || 'Unknown',
+			origin_status: pItem['origin_status'] || '',
+			parent_status: pItem['parent_status'] || '',
+			cloud_sync_status: pItem['cloud_sync_status'] || ''
+		};
+	});
+	gCustomFilaments.sort(function(a,b){
+		let at=(a.type||'').toLowerCase(), bt=(b.type||'').toLowerCase();
+		if(at!==bt) return at<bt ? -1 : 1;
+		let av=(a.vendor||'').toLowerCase(), bv=(b.vendor||'').toLowerCase();
+		if(av!==bv) return av<bv ? -1 : 1;
+		let an=(a.name||'').toLowerCase(), bn=(b.name||'').toLowerCase();
+		if(an===bn) return 0;
+		return an<bn ? -1 : 1;
+	});
+	RefreshCustomFilterMenus();
+	RenderCustomFilamentRows();
+	FilterCustomFilaments();
+}
+
+function RenderCustomFilamentRows()
+{
 	let strHtml='';
-	let nTotal=CFList.length;
-	
+	let nTotal=gCustomFilaments.length;
 	for(let n=0;n<nTotal;n++)
 	{
-		let pItem=CFList[n];
-		
-		let F_id=pItem['id'];
-		let F_name=pItem['name'];
-		
-		let strAdd='<div class="CFilament_Item">'+
-			       '<a  class="CFilament_Name" title="'+F_name+'">'+F_name+'</a><img onClick="CFEdit(\''+F_id+'\')" class="CFilament_EditBtn" src="../../image/edit.svg" />'+
-		           '</div>';
-		
+		let pItem=gCustomFilaments[n];
+		let F_id=pItem.id;
+		let F_name=pItem.name;
+		let F_type=pItem.type || 'Unknown';
+		let F_vendor=pItem.vendor || 'Unknown';
+		let F_name_attr=EncodeAttr(F_name);
+		let F_type_attr=EncodeAttr(F_type);
+		let F_vendor_attr=EncodeAttr(F_vendor);
+		let originStatus=pItem.origin_status;
+		let parentStatus=pItem.parent_status;
+		let cloudStatus=pItem.cloud_sync_status;
+		let statusText=[originStatus,parentStatus,cloudStatus,F_type,F_vendor].filter(Boolean).join(' ');
+		let statusHtml='';
+		if(originStatus) statusHtml += '<span class="CF_Badge">'+FormatOriginStatus(originStatus)+'</span>';
+		if(parentStatus) statusHtml += '<span class="CF_Badge">'+FormatParentStatus(parentStatus)+'</span>';
+		if(cloudStatus)  statusHtml += '<span class="CF_Badge">'+FormatCloudStatus(cloudStatus)+'</span>';
+		let strAdd='<div class="CFilament_Item" data-type="'+F_type_attr+'" data-vendor="'+F_vendor_attr+'" data-filter="'+EncodeAttr((F_name + " " + statusText).toLowerCase())+'">'+
+			       '<div class="CFilament_Row"><span class="CFilament_Type" title="'+F_type_attr+'">'+F_type_attr+'</span><a class="CFilament_Name" title="'+F_name_attr+'">'+F_name_attr+'</a><img data-id="'+EncodeAttr(F_id)+'" data-name="'+F_name_attr+'" onClick="CFEdit(this)" class="CFilament_EditBtn" src="../../image/edit.svg" /><button class="CFilament_DeleteBtn" data-id="'+EncodeAttr(F_id)+'" data-name="'+F_name_attr+'" onClick="CFDelete(this)">Delete</button></div>'+
+				   '<div class="CFilament_Status">'+statusHtml+'</div>'+
+				   '</div>';
 		strHtml+=strAdd;
 	}
-	
 	$('#CFilament_List').html(strHtml);
+}
+
+function RefreshCustomFilterMenus()
+{
+	let typeValues=[];
+	let vendorValues=[];
+	let typeMap={};
+	let vendorMap={};
+	for(let i=0;i<gCustomFilaments.length;i++){
+		let t=(gCustomFilaments[i].type||'').trim();
+		let v=(gCustomFilaments[i].vendor||'').trim();
+		if(t && !typeMap[t]){ typeMap[t]=1; typeValues.push(t); }
+		if(v && !vendorMap[v]){ vendorMap[v]=1; vendorValues.push(v); }
+	}
+	typeValues.sort();
+	vendorValues.sort();
+	if(!gCustomTypeFiltersInitialized){
+		typeValues.forEach(v=>gCustomTypeFilters.add(v));
+		gCustomTypeFiltersInitialized = true;
+	}
+	if(!gCustomVendorFiltersInitialized){
+		vendorValues.forEach(v=>gCustomVendorFilters.add(v));
+		gCustomVendorFiltersInitialized = true;
+	}
+	gCustomTypeFilters = new Set([...gCustomTypeFilters].filter(v=>typeMap[v]));
+	gCustomVendorFilters = new Set([...gCustomVendorFilters].filter(v=>vendorMap[v]));
+	RenderCustomFilterMenu('type', typeValues, gCustomTypeFilters);
+	RenderCustomFilterMenu('vendor', vendorValues, gCustomVendorFilters);
+	UpdateCustomFilterButtonTitles(typeValues, vendorValues);
+}
+
+function RenderCustomFilterMenu(kind, values, selectedSet)
+{
+	let menu = kind==='type' ? $('#CF_Type_Filter_Menu') : $('#CF_Vendor_Filter_Menu');
+	let html='<label><input type="checkbox" data-kind="'+kind+'" data-value="__all__" '+(selectedSet.size===values.length?'checked':'')+' onchange="OnCustomFilterAllToggle(this)" />All</label>';
+	for(let i=0;i<values.length;i++){
+		let val=values[i];
+		html+='<label><input type="checkbox" data-kind="'+kind+'" data-value="'+EncodeAttr(val)+'" '+(selectedSet.has(val)?'checked':'')+' onchange="OnCustomFilterToggle(this)" />'+EncodeAttr(val)+'</label>';
+	}
+	menu.html(html);
+}
+
+function UpdateCustomFilterButtonTitles(typeValues, vendorValues)
+{
+	let tTitle=(gCustomTypeFilters.size===typeValues.length)?'Type':'Type ('+gCustomTypeFilters.size+')';
+	let vTitle=(gCustomVendorFilters.size===vendorValues.length)?'Vendor':'Vendor ('+gCustomVendorFilters.size+')';
+	$('#CF_Type_Filter_Btn').text(tTitle);
+	$('#CF_Vendor_Filter_Btn').text(vTitle);
+}
+
+function ToggleCustomFilterMenu(kind)
+{
+	let menu = kind==='type' ? $('#CF_Type_Filter_Menu') : $('#CF_Vendor_Filter_Menu');
+	let btn  = kind==='type' ? $('#CF_Type_Filter_Btn') : $('#CF_Vendor_Filter_Btn');
+	let isOpen = menu.hasClass('open');
+	CloseCustomFilterMenus();
+	if(!isOpen){
+		menu.addClass('open');
+		btn.addClass('open');
+	}
+}
+
+function CloseCustomFilterMenus()
+{
+	$('#CF_Type_Filter_Menu,#CF_Vendor_Filter_Menu').removeClass('open');
+	$('#CF_Type_Filter_Btn,#CF_Vendor_Filter_Btn').removeClass('open');
+}
+
+function OnCustomFilterAllToggle(cb)
+{
+	let kind = cb.getAttribute('data-kind');
+	let checked = cb.checked;
+	let values = [];
+	if(kind==='type'){
+		$('#CF_Type_Filter_Menu input[data-value!="__all__"]').each(function(){ values.push(this.getAttribute('data-value')); this.checked=checked; });
+		gCustomTypeFilters = new Set(checked ? values : []);
+	}else{
+		$('#CF_Vendor_Filter_Menu input[data-value!="__all__"]').each(function(){ values.push(this.getAttribute('data-value')); this.checked=checked; });
+		gCustomVendorFilters = new Set(checked ? values : []);
+	}
+	RefreshCustomFilterMenus();
+	FilterCustomFilaments();
+}
+
+function OnCustomFilterToggle(cb)
+{
+	let kind = cb.getAttribute('data-kind');
+	let value = cb.getAttribute('data-value');
+	if(kind==='type'){
+		if(cb.checked) gCustomTypeFilters.add(value); else gCustomTypeFilters.delete(value);
+	}else{
+		if(cb.checked) gCustomVendorFilters.add(value); else gCustomVendorFilters.delete(value);
+	}
+	RefreshCustomFilterMenus();
+	FilterCustomFilaments();
+}
+
+function FilterCustomFilaments()
+{
+	let search=$('#CFilament_Filter').val();
+	if(!search) search='';
+	search=search.trim().toLowerCase();
+	$('#CFilament_List .CFilament_Item').each(function(){
+		let hay=$(this).attr('data-filter') || '';
+		let type=$(this).attr('data-type') || '';
+		let vendor=$(this).attr('data-vendor') || '';
+		let typeMatch=(gCustomTypeFilters.size===0) ? false : gCustomTypeFilters.has(type);
+		let vendorMatch=(gCustomVendorFilters.size===0) ? false : gCustomVendorFilters.has(vendor);
+		if((!search || hay.indexOf(search)>=0) && typeMatch && vendorMatch)
+			$(this).show();
+		else
+			$(this).hide();
+	});
+}
+
+function EncodeAttr(str)
+{
+	return String(str || '')
+		.replace(/&/g, '&amp;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;');
+}
+
+function FormatOriginStatus(originStatus)
+{
+	switch(originStatus){
+		case 'detached': return 'Detached';
+		case 'inherited': return 'Inherited';
+		case 'new': return 'New';
+		default: return originStatus;
+	}
+}
+
+function FormatParentStatus(parentStatus)
+{
+	switch(parentStatus){
+		case 'from_generic': return 'From Generic';
+		case 'from_system': return 'From System';
+		case 'from_user': return 'From User';
+		default: return parentStatus;
+	}
+}
+
+function FormatCloudStatus(cloudStatus)
+{
+	switch(cloudStatus){
+		case 'synced': return 'Cloud Synced';
+		case 'pending': return 'Cloud Pending';
+		case 'hold': return 'Cloud Hold';
+		case 'local_only': return 'Cloud Local';
+		default: return cloudStatus;
+	}
 }
 
 
@@ -622,16 +822,29 @@ function OnClickCustomFilamentAdd()
 }
 
 //编辑某一个自定义材料
-function CFEdit( fid )
+function CFEdit( btn )
 {
-	//alert(fid);
+	let fid=$(btn).attr('data-id');
+	let fname=$(btn).attr('data-name');
 	
 	var tSend={};
 	tSend['sequence_id']=Math.round(new Date() / 1000);
 	tSend['command']="modify_custom_filament";
 	tSend['id']=fid;
+	tSend['name']=fname;
 		
 	SendWXMessage( JSON.stringify(tSend) );	
 }
 
-
+function CFDelete( btn )
+{
+	let fid=$(btn).attr('data-id');
+	let fname=$(btn).attr('data-name');
+	var tSend={};
+	tSend['sequence_id']=Math.round(new Date() / 1000);
+	tSend['command']="delete_custom_filament";
+	tSend['id']=fid;
+	tSend['name']=fname;
+		
+	SendWXMessage( JSON.stringify(tSend) );
+}

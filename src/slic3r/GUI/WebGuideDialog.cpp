@@ -4,6 +4,7 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/iostreams/detail/select.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 #include <string.h>
 #include "I18N.hpp"
 #include "libslic3r/AppConfig.hpp"
@@ -40,67 +41,207 @@ namespace Slic3r { namespace GUI {
 
 json m_ProfileJson;
 
+namespace {
+struct CustomFilamentGroupInfo {
+    std::string filament_id;
+    std::string display_name;
+    std::string sort_name;
+    std::string filament_type;
+    std::string filament_vendor;
+    bool        has_user_root      = false;
+    bool        has_user_inherited = false;
+    bool        has_system         = false;
+    bool        has_generic_vendor = false;
+    bool        has_sync_hold      = false;
+    bool        has_sync_pending   = false;
+    bool        has_setting_id     = false;
+    bool        has_empty_setting  = false;
+};
+
+struct SystemFilamentInfo {
+    bool has_system         = false;
+    bool has_generic_vendor = false;
+    std::string display_name;
+};
+
+static std::string preset_vendor_name(const Preset &preset)
+{
+    auto vendor = dynamic_cast<ConfigOptionStrings *>(const_cast<Preset &>(preset).config.option("filament_vendor", false));
+    if (vendor == nullptr || vendor->values.empty())
+        return "";
+    return vendor->values[0];
+}
+
+static std::string preset_type_name(const Preset &preset)
+{
+    auto type = dynamic_cast<ConfigOptionStrings *>(const_cast<Preset &>(preset).config.option("filament_type", false));
+    if (type == nullptr || type->values.empty())
+        return "";
+    return type->values[0];
+}
+
+static std::string custom_origin_status(const CustomFilamentGroupInfo &info)
+{
+    if (info.has_user_inherited)
+        return "inherited";
+    if (info.has_user_root && info.has_system)
+        return "detached";
+    if (info.has_user_root)
+        return "new";
+    return "unknown";
+}
+
+static std::string parent_status(const CustomFilamentGroupInfo &info)
+{
+    if (info.has_generic_vendor)
+        return "from_generic";
+    if (info.has_system)
+        return "from_system";
+    if (info.has_user_root || info.has_user_inherited)
+        return "from_user";
+    return "none";
+}
+
+static std::string cloud_sync_status(const CustomFilamentGroupInfo &info)
+{
+    if (info.has_sync_hold)
+        return "hold";
+    if (info.has_sync_pending)
+        return "pending";
+    if (info.has_setting_id && !info.has_empty_setting)
+        return "synced";
+    return "local_only";
+}
+
+static std::string short_filament_name(const std::string &name)
+{
+    std::string short_name = name;
+    size_t      index_at   = short_name.find(" @");
+    if (index_at != std::string::npos)
+        short_name = short_name.substr(0, index_at);
+    return short_name;
+}
+} // namespace
+
 static wxString update_custom_filaments()
 {
-    json m_Res                                                                     = json::object();
-    m_Res["command"]                                                               = "update_custom_filaments";
-    m_Res["sequence_id"]                                                           = "2000";
-    json                                               m_CustomFilaments           = json::array();
-    PresetBundle *                                     preset_bundle               = wxGetApp().preset_bundle;
-    std::map<std::string, std::vector<Preset const *>> temp_filament_id_to_presets = preset_bundle->filaments.get_filament_presets();
+    json          m_Res = json::object();
+    m_Res["command"]    = "update_custom_filaments";
+    m_Res["sequence_id"] = "2000";
+    json m_CustomFilaments = json::array();
 
-    std::vector<std::pair<std::string, std::string>>   need_sort;
-    bool                                             need_delete_some_filament = false;
-    for (std::pair<std::string, std::vector<Preset const *>> filament_id_to_presets : temp_filament_id_to_presets) {
-        std::string filament_id = filament_id_to_presets.first;
-        if (filament_id.empty()) continue;
-        if (filament_id == "null") {
-            need_delete_some_filament = true;
-        }
-        bool filament_with_base_id = false;
-        bool not_need_show = false;
-        std::string filament_name;
-        for (const Preset *preset : filament_id_to_presets.second) {
-            if (preset->is_system || preset->is_project_embedded) {
-                not_need_show = true;
-                break;
-            }
-            if (preset->inherits() != "") continue;
-            if (!preset->base_id.empty()) filament_with_base_id = true;
-
-            if (!not_need_show) {
-                auto filament_vendor = dynamic_cast<ConfigOptionStrings *>(const_cast<Preset *>(preset)->config.option("filament_vendor", false));
-                if (filament_vendor && filament_vendor->values.size() && filament_vendor->values[0] == "Generic") not_need_show = true;
-            }
-
-            if (filament_name.empty()) {
-                std::string preset_name = preset->name;
-                size_t      index_at    = preset_name.find(" @");
-                if (std::string::npos != index_at) { preset_name = preset_name.substr(0, index_at); }
-                filament_name = preset_name;
-            }
-        }
-        if (not_need_show) continue;
-        if (!filament_name.empty()) {
-            if (filament_with_base_id) {
-                need_sort.push_back(std::make_pair("[Action Required] " + filament_name, filament_id));
-            } else {
-
-                need_sort.push_back(std::make_pair(filament_name, filament_id));
-            }
-        }
+    PresetBundle *preset_bundle = wxGetApp().preset_bundle;
+    if (preset_bundle == nullptr) {
+        m_Res["data"] = m_CustomFilaments;
+        wxString strJS = wxString::Format("HandleStudio(%s)", wxString::FromUTF8(m_Res.dump(-1, ' ', false, json::error_handler_t::ignore)));
+        return strJS;
     }
-    std::sort(need_sort.begin(), need_sort.end(), [](const std::pair<std::string, std::string> &a, const std::pair<std::string, std::string> &b) { return a.first < b.first; });
-    if (need_delete_some_filament) {
-        need_sort.push_back(std::make_pair("[Action Required]", "null"));
+
+    std::map<std::string, SystemFilamentInfo>      system_by_filament_id;
+    std::map<std::string, CustomFilamentGroupInfo> grouped;
+    const std::deque<Preset> &all_filaments = preset_bundle->filaments.get_presets();
+
+    // Pass 1: cache system metadata by filament_id.
+    for (const Preset &preset : all_filaments) {
+        if (preset.is_project_embedded)
+            continue;
+        if (!preset.is_system)
+            continue;
+        if (preset.filament_id.empty())
+            continue;
+
+        auto &sys_info = system_by_filament_id[preset.filament_id];
+        sys_info.has_system = true;
+        if (sys_info.display_name.empty())
+            sys_info.display_name = short_filament_name(preset.name);
+        std::string vendor = preset_vendor_name(preset);
+        if (boost::iequals(vendor, "generic"))
+            sys_info.has_generic_vendor = true;
     }
-    json temp_j;
-    for (std::pair<std::string, std::string> &filament_name_to_id : need_sort) {
-        temp_j["name"] = filament_name_to_id.first;
-        temp_j["id"]   = filament_name_to_id.second;
-        m_CustomFilaments.push_back(temp_j);
+
+    // Pass 2: build custom list by user-friendly name (not only by filament_id).
+    for (const Preset &preset : all_filaments) {
+        if (preset.is_project_embedded)
+            continue;
+        if (preset.filament_id.empty())
+            continue;
+        if (!preset.is_user())
+            continue;
+
+        const std::string full_name = preset.name;
+        const std::string name_key  = short_filament_name(full_name);
+        const std::string group_key = preset.filament_id + "|" + name_key;
+        auto             &group     = grouped[group_key];
+        group.filament_id = preset.filament_id;
+        if (group.sort_name.empty())
+            group.sort_name = name_key;
+        // Keep full preset label (including part after '@') for UI display.
+        if (group.display_name.empty() || preset.inherits().empty())
+            group.display_name = full_name;
+
+        if (preset.inherits().empty())
+            group.has_user_root = true;
+        else
+            group.has_user_inherited = true;
+
+        if (auto sys_it = system_by_filament_id.find(preset.filament_id); sys_it != system_by_filament_id.end()) {
+            group.has_system = sys_it->second.has_system;
+            group.has_generic_vendor = group.has_generic_vendor || sys_it->second.has_generic_vendor;
+        }
+
+        std::string vendor = preset_vendor_name(preset);
+        if (boost::iequals(vendor, "generic"))
+            group.has_generic_vendor = true;
+        std::string type = preset_type_name(preset);
+        if (group.filament_vendor.empty() || preset.inherits().empty())
+            group.filament_vendor = vendor;
+        if (group.filament_type.empty() || preset.inherits().empty())
+            group.filament_type = type;
+
+        if (preset.sync_info == "hold")
+            group.has_sync_hold = true;
+        else if (preset.sync_info == "create" || preset.sync_info == "update" || preset.sync_info == "delete" || preset.sync_info == "save")
+            group.has_sync_pending = true;
+
+        if (!preset.setting_id.empty())
+            group.has_setting_id = true;
+        else
+            group.has_empty_setting = true;
     }
-    m_Res["data"]  = m_CustomFilaments;
+
+    std::vector<CustomFilamentGroupInfo> result;
+    for (auto &entry : grouped) {
+        auto &group = entry.second;
+        // Custom tab should represent user-owned filaments (including detached/inherited).
+        if (!group.has_user_root && !group.has_user_inherited)
+            continue;
+        result.push_back(group);
+    }
+
+    std::sort(result.begin(), result.end(), [](const CustomFilamentGroupInfo &a, const CustomFilamentGroupInfo &b) {
+        if (a.sort_name == b.sort_name)
+            return a.display_name < b.display_name;
+        return a.sort_name < b.sort_name;
+    });
+
+    for (const auto &group : result) {
+        json item;
+        item["id"]                 = group.filament_id;
+        item["name"]               = group.display_name;
+        item["type"]               = group.filament_type;
+        item["vendor"]             = group.filament_vendor;
+        item["filament_id"]        = group.filament_id;
+        item["origin_status"]      = custom_origin_status(group);
+        item["parent_status"]      = parent_status(group);
+        item["cloud_sync_status"]  = cloud_sync_status(group);
+        item["has_user_root"]      = group.has_user_root;
+        item["has_user_inherited"] = group.has_user_inherited;
+        item["has_system"]         = group.has_system;
+        item["has_generic_vendor"] = group.has_generic_vendor;
+        m_CustomFilaments.push_back(item);
+    }
+
+    m_Res["data"] = m_CustomFilaments;
     wxString strJS = wxString::Format("HandleStudio(%s)", wxString::FromUTF8(m_Res.dump(-1, ' ', false, json::error_handler_t::ignore)));
     return strJS;
 }
@@ -173,6 +314,16 @@ GuideFrame::GuideFrame(GUI_App *pGUI, long style)
     Bind(wxEVT_WEBVIEW_TITLE_CHANGED, &GuideFrame::OnTitleChanged, this, m_browser->GetId());
     Bind(wxEVT_WEBVIEW_FULLSCREEN_CHANGED, &GuideFrame::OnFullScreenChanged, this, m_browser->GetId());
     Bind(wxEVT_WEBVIEW_SCRIPT_MESSAGE_RECEIVED, &GuideFrame::OnScriptMessage, this, m_browser->GetId());
+    Bind(wxEVT_ACTIVATE, [this](wxActivateEvent &evt) {
+        if (evt.GetActive() && m_resume_custom_filaments && m_page == BBL_FILAMENT_ONLY) {
+            m_resume_custom_filaments = false;
+            wxGetApp().CallAfter([this]() {
+                // Return user back to Custom tab and refresh list after edit/delete dialogs are closed.
+                RunScript("OnSelectMenu(2);RequestCustomFilaments();");
+            });
+        }
+        evt.Skip();
+    });
 
     // Connect the idle events
     // Bind(wxEVT_IDLE, &GuideFrame::OnIdle, this);
@@ -419,8 +570,21 @@ void GuideFrame::OnScriptMessage(wxWebViewEvent &evt)
             this->EndModal(wxID_OK);
             wxQueueEvent(wxGetApp().plater(), new SimpleEvent(EVT_CREATE_FILAMENT));
         } else if (strCmd == "modify_custom_filament") {
-            m_editing_filament_id = j["id"];
-            this->EndModal(wxID_EDIT);
+            Filamentinformation *filament_info = new Filamentinformation();
+            filament_info->filament_id         = j["id"];
+            filament_info->filament_name       = j.value("name", "");
+            filament_info->delete_mode         = false;
+            filament_info->source_window       = this;
+            m_resume_custom_filaments          = true;
+            wxQueueEvent(wxGetApp().plater(), new SimpleEvent(EVT_MODIFY_FILAMENT, filament_info));
+        } else if (strCmd == "delete_custom_filament") {
+            Filamentinformation *filament_info = new Filamentinformation();
+            filament_info->filament_id         = j["id"];
+            filament_info->filament_name       = j.value("name", "");
+            filament_info->delete_mode         = true;
+            filament_info->source_window       = this;
+            m_resume_custom_filaments          = true;
+            wxQueueEvent(wxGetApp().plater(), new SimpleEvent(EVT_MODIFY_FILAMENT, filament_info));
         }
         else if (strCmd == "save_userguide_models")
         {
@@ -961,10 +1125,12 @@ bool GuideFrame::run()
         }
         else
             return false;
-    } else if (result == wxID_EDIT) {
+    } else if (result == wxID_EDIT || result == wxID_DELETE) {
         this->Close();
         Filamentinformation *filament_info = new Filamentinformation();
         filament_info->filament_id        = m_editing_filament_id;
+        filament_info->filament_name      = m_editing_filament_name;
+        filament_info->delete_mode        = (result == wxID_DELETE);
         wxQueueEvent(wxGetApp().plater(), new SimpleEvent(EVT_MODIFY_FILAMENT, filament_info));
         return false;
     }
