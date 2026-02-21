@@ -1335,6 +1335,12 @@ void PreferencesDialog::create_items()
     auto item_show_splash_scr  = create_item_checkbox(_L("Show splash screen"), _L("Show the splash screen during startup."), "show_splash_screen");
     g_sizer->Add(item_show_splash_scr);
 
+    auto item_downloads        = create_item_downloads(_L("Downloads folder") + ": ", _L("Target folder for downloaded items"));
+    g_sizer->Add(item_downloads);
+
+    //// GENERAL > Peter's Settings (fork-specific)
+    g_sizer->Add(create_item_title(_L("Peter's Settings")), 1, wxEXPAND);
+
     auto item_use_bambu_connect = create_item_checkbox(_L("Use Bambu Lab Connect"), _L("Enable one-click handoff of print jobs to Bambu Connect."), "use_bambu_connect");
     g_sizer->Add(item_use_bambu_connect);
 
@@ -1397,9 +1403,6 @@ void PreferencesDialog::create_items()
 
     //auto item_hints            = create_item_checkbox(_L("Show \"Daily Tips\" after start"), page, _L("If enabled, useful hints are displayed at startup."), "show_daily_tips");
     //g_sizer->Add(item_hints);
-
-    auto item_downloads        = create_item_downloads(_L("Downloads folder") + ": ", _L("Target folder for downloaded items"));
-    g_sizer->Add(item_downloads);
 
     //// GENERAL > Project
     g_sizer->Add(create_item_title(_L("Project")), 1, wxEXPAND);
