@@ -105,7 +105,18 @@
 	
 <div id="CustomFilamentsArea">
 	<div id="CFilament_Btn_Area">
-		<div class="ButtonStyleConfirm ButtonTypeWindow trans" tid="t111" onClick="OnClickCustomFilamentAdd()">Create New</div>
+			<div class="ButtonStyleConfirm ButtonTypeWindow trans" tid="t111" onClick="OnClickCustomFilamentAdd()">Create New</div>
+	</div>
+	<div id="CFilament_Filter_Area">
+		<input id="CFilament_Filter" type="text" placeholder="Search custom filaments" oninput="FilterCustomFilaments()" />
+		<div class="CF_FilterDropdown">
+			<button id="CF_Type_Filter_Btn" class="CF_FilterBtn" type="button" onclick="ToggleCustomFilterMenu('type')">Type</button>
+			<div id="CF_Type_Filter_Menu" class="CF_FilterMenu"></div>
+		</div>
+		<div class="CF_FilterDropdown">
+			<button id="CF_Vendor_Filter_Btn" class="CF_FilterBtn" type="button" onclick="ToggleCustomFilterMenu('vendor')">Vendor</button>
+			<div id="CF_Vendor_Filter_Menu" class="CF_FilterMenu"></div>
+		</div>
 	</div>
     <div id="CFilament_List" class="ZScrol">
 	</div>

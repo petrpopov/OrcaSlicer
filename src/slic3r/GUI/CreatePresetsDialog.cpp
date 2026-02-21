@@ -4406,8 +4406,9 @@ EditFilamentPresetDialog::EditFilamentPresetDialog(wxWindow *parent, Filamentinf
 
     m_main_sizer->Add(basic_information, 0, wxALL, FromDIP(10));
     m_filament_id = filament_info->filament_id;
-    //std::string filament_name = filament_info->filament_name;
-    bool get_filament_presets = get_same_filament_id_presets(m_filament_id);
+    if (filament_info != nullptr && !filament_info->filament_name.empty())
+        m_filament_name = filament_info->filament_name;
+    bool get_filament_presets = get_same_filament_id_presets(m_filament_id, m_filament_name);
     // get filament vendor, type, serial, and name
     if (get_filament_presets && !m_printer_compatible_presets.empty()) {
         std::shared_ptr<Preset> preset;
@@ -4460,6 +4461,22 @@ EditFilamentPresetDialog::EditFilamentPresetDialog(wxWindow *parent, Filamentinf
     this->Layout();
     this->Fit();
     wxGetApp().UpdateDlgDarkUI(this);
+
+    Bind(wxEVT_SHOW, [this](wxShowEvent &event) {
+        if (event.IsShown() && m_auto_delete) {
+            m_auto_delete = false;
+            const std::string target_name = m_auto_delete_target_name;
+            wxGetApp().CallAfter([this, target_name]() {
+                // Auto-delete flow is triggered from Custom Filaments list, so do not keep this dialog visible behind confirm popup.
+                this->Hide();
+                if (!target_name.empty())
+                    delete_presets_by_short_name(target_name, true);
+                else
+                    delete_filament(true);
+            });
+        }
+        event.Skip();
+    });
 }
 EditFilamentPresetDialog::~EditFilamentPresetDialog() {}
 
@@ -4467,7 +4484,7 @@ void EditFilamentPresetDialog::on_dpi_changed(const wxRect &suggested_rect) {
     Layout();
 }
 
-bool EditFilamentPresetDialog::get_same_filament_id_presets(std::string filament_id)
+bool EditFilamentPresetDialog::get_same_filament_id_presets(std::string filament_id, const std::string &target_short_name)
 {
     PresetBundle *preset_bundle = wxGetApp().preset_bundle;
     const std::deque<Preset> &filament_presets = preset_bundle->filaments.get_presets();
@@ -4475,6 +4492,12 @@ bool EditFilamentPresetDialog::get_same_filament_id_presets(std::string filament
     m_printer_compatible_presets.clear();
     for (Preset const &preset : filament_presets) {
         if (preset.is_system || preset.filament_id != filament_id) continue;
+        if (!target_short_name.empty()) {
+            std::string candidate = preset.name;
+            const std::string candidate_short = get_filament_name(candidate);
+            if (candidate != target_short_name && candidate_short != target_short_name)
+                continue;
+        }
         std::shared_ptr<Preset> new_preset = std::make_shared<Preset>(preset);
         std::vector<std::string> printers;
         get_filament_compatible_printer(new_preset.get(), printers);
@@ -4709,7 +4732,7 @@ wxBoxSizer *EditFilamentPresetDialog::create_add_filament_btn()
         CreatePresetForPrinterDialog dlg(nullptr, m_filament_type, m_filament_id, m_vendor_name, m_filament_name);
         int res = dlg.ShowModal();
         if (res == wxID_OK) {
-            if (get_same_filament_id_presets(m_filament_id)) {
+            if (get_same_filament_id_presets(m_filament_id, m_filament_name)) {
                 update_preset_tree();
             }
         }
@@ -4745,48 +4768,173 @@ wxWindow *EditFilamentPresetDialog::create_dialog_buttons()
     auto dlg_btns = new DialogButtons(this, {"Delete", "OK"}, "", 1 /*left_aligned*/);
 
     dlg_btns->GetFIRST()->Bind(wxEVT_BUTTON, ([this](wxCommandEvent &e) {
-        WarningDialog dlg(this, _L("All the filament presets belong to this filament would be deleted.\n"
-                                   "If you are using this filament on your printer, please reset the filament information for that slot."),
-                          _L("Delete filament"), wxYES | wxCANCEL | wxCANCEL_DEFAULT | wxCENTRE);
-        int res = dlg.ShowModal();
-        if (wxID_YES == res) {
-            PresetBundle *preset_bundle = wxGetApp().preset_bundle;
-            std::set<std::shared_ptr<Preset>> inherit_preset_names;
-            std::set<std::shared_ptr<Preset>> root_preset_names;
-            for (std::pair<std::string, std::vector<std::shared_ptr<Preset>>> printer_and_preset : m_printer_compatible_presets) {
-                for (std::shared_ptr<Preset> preset : printer_and_preset.second) {
-                    if (preset->inherits().empty()) {
-                        root_preset_names.insert(preset);
-                    } else {
-                        inherit_preset_names.insert(preset);
-                    }
-                }
-            }
-            // delete inherit preset first
-            std::string next_selected_preset_name = wxGetApp().preset_bundle->filaments.get_selected_preset().name;
-            for (std::shared_ptr<Preset> preset : inherit_preset_names) {
-                bool delete_result = delete_filament_preset_by_name(preset->name, next_selected_preset_name);
-                BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " inherit filament name: " << preset->name << (delete_result ? " delete successful" : " delete failed");
-            }
-            for (std::shared_ptr<Preset> preset : root_preset_names) {
-                bool delete_result = delete_filament_preset_by_name(preset->name, next_selected_preset_name);
-                BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " root filament name: " << preset->name << (delete_result ? " delete successful" : " delete failed");
-            }
-            m_printer_compatible_presets.clear();
-            wxGetApp().preset_bundle->filaments.select_preset_by_name(next_selected_preset_name,true);
-
-            for (size_t i = 0; i < wxGetApp().preset_bundle->filament_presets.size(); ++i) {
-                auto preset = wxGetApp().preset_bundle->filaments.find_preset(wxGetApp().preset_bundle->filament_presets[i]);
-                if (preset == nullptr) wxGetApp().preset_bundle->filament_presets[i] = wxGetApp().preset_bundle->filaments.get_selected_preset_name();
-            }
-            EndModal(wxID_OK);
-        }
+        delete_filament();
         e.Skip();
-        }));
+    }));
 
     dlg_btns->GetOK()->Bind(wxEVT_BUTTON, [this](wxCommandEvent &e) { EndModal(wxID_OK); });
 
     return dlg_btns;
+}
+
+void EditFilamentPresetDialog::delete_filament(bool close_on_cancel)
+{
+    WarningDialog dlg(this, _L("All the filament presets belong to this filament would be deleted.\n"
+                               "If you are using this filament on your printer, please reset the filament information for that slot."),
+                      _L("Delete filament"), wxYES | wxCANCEL | wxCANCEL_DEFAULT | wxCENTRE);
+    int res = dlg.ShowModal();
+    if (wxID_YES != res) {
+        if (close_on_cancel)
+            EndModal(wxID_CANCEL);
+        return;
+    }
+
+    PresetBundle *preset_bundle = wxGetApp().preset_bundle;
+    if (preset_bundle == nullptr) {
+        if (close_on_cancel)
+            EndModal(wxID_CANCEL);
+        return;
+    }
+
+    std::set<std::shared_ptr<Preset>> inherit_preset_names;
+    std::set<std::shared_ptr<Preset>> root_preset_names;
+    for (std::pair<std::string, std::vector<std::shared_ptr<Preset>>> printer_and_preset : m_printer_compatible_presets) {
+        for (std::shared_ptr<Preset> preset : printer_and_preset.second) {
+            if (preset->inherits().empty())
+                root_preset_names.insert(preset);
+            else
+                inherit_preset_names.insert(preset);
+        }
+    }
+
+    // delete inherit preset first
+    std::string next_selected_preset_name = wxGetApp().preset_bundle->filaments.get_selected_preset().name;
+    for (std::shared_ptr<Preset> preset : inherit_preset_names) {
+        bool delete_result = delete_filament_preset_by_name(preset->name, next_selected_preset_name);
+        BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " inherit filament name: " << preset->name << (delete_result ? " delete successful" : " delete failed");
+    }
+    for (std::shared_ptr<Preset> preset : root_preset_names) {
+        bool delete_result = delete_filament_preset_by_name(preset->name, next_selected_preset_name);
+        BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " root filament name: " << preset->name << (delete_result ? " delete successful" : " delete failed");
+    }
+    m_printer_compatible_presets.clear();
+    wxGetApp().preset_bundle->filaments.select_preset_by_name(next_selected_preset_name, true);
+
+    for (size_t i = 0; i < wxGetApp().preset_bundle->filament_presets.size(); ++i) {
+        auto preset = wxGetApp().preset_bundle->filaments.find_preset(wxGetApp().preset_bundle->filament_presets[i]);
+        if (preset == nullptr)
+            wxGetApp().preset_bundle->filament_presets[i] = wxGetApp().preset_bundle->filaments.get_selected_preset_name();
+    }
+    EndModal(wxID_OK);
+}
+
+void EditFilamentPresetDialog::delete_presets_by_short_name(const std::string &short_name, bool close_on_cancel)
+{
+    if (short_name.empty()) {
+        delete_filament(close_on_cancel);
+        return;
+    }
+
+    std::set<std::string> target_preset_names;
+    for (const auto &printer_and_preset : m_printer_compatible_presets) {
+        for (const std::shared_ptr<Preset> &preset : printer_and_preset.second) {
+            std::string candidate = preset->name;
+            const std::string candidate_short = get_filament_name(candidate);
+            if (candidate == short_name || candidate_short == short_name)
+                target_preset_names.insert(preset->name);
+        }
+    }
+
+    if (target_preset_names.empty()) {
+        MessageDialog(this, _L("Selected filament preset was not found."), _L("Delete preset"), wxOK | wxICON_WARNING).ShowModal();
+        EndModal(close_on_cancel ? wxID_CANCEL : wxID_OK);
+        return;
+    }
+
+    wxString msg = wxString::Format(_L("Delete all presets named \"%s\"?"), from_u8(short_name));
+    if (wxID_YES != MessageDialog(this, msg, _L("Delete preset"), wxYES_NO | wxNO_DEFAULT | wxICON_QUESTION).ShowModal()) {
+        if (close_on_cancel)
+            EndModal(wxID_CANCEL);
+        return;
+    }
+
+    std::string next_selected_preset_name = wxGetApp().preset_bundle->filaments.get_selected_preset().name;
+    for (const std::string &preset_name : target_preset_names) {
+        bool delete_result = delete_filament_preset_by_name(preset_name, next_selected_preset_name);
+        BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " preset name: " << preset_name << (delete_result ? " delete successful" : " delete failed");
+    }
+
+    wxGetApp().preset_bundle->filaments.select_preset_by_name(next_selected_preset_name, true);
+    for (size_t i = 0; i < wxGetApp().preset_bundle->filament_presets.size(); ++i) {
+        auto preset = wxGetApp().preset_bundle->filaments.find_preset(wxGetApp().preset_bundle->filament_presets[i]);
+        if (preset == nullptr)
+            wxGetApp().preset_bundle->filament_presets[i] = wxGetApp().preset_bundle->filaments.get_selected_preset_name();
+    }
+    EndModal(wxID_OK);
+}
+
+size_t EditFilamentPresetDialog::get_total_preset_count() const
+{
+    size_t total = 0;
+    for (const auto &printer_and_preset : m_printer_compatible_presets)
+        total += printer_and_preset.second.size();
+    return total;
+}
+
+std::shared_ptr<Preset> EditFilamentPresetDialog::get_single_preset_for_edit() const
+{
+    if (get_total_preset_count() != 1)
+        return nullptr;
+    for (const auto &printer_and_preset : m_printer_compatible_presets) {
+        if (!printer_and_preset.second.empty())
+            return printer_and_preset.second.front();
+    }
+    return nullptr;
+}
+
+bool EditFilamentPresetDialog::run_quick_delete(const std::string &short_or_full_name, wxWindow *dialog_parent)
+{
+    wxWindow *parent = dialog_parent ? dialog_parent : static_cast<wxWindow *>(this);
+
+    std::set<std::string> target_preset_names;
+    if (short_or_full_name.empty()) {
+        for (const auto &printer_and_preset : m_printer_compatible_presets) {
+            for (const std::shared_ptr<Preset> &preset : printer_and_preset.second)
+                target_preset_names.insert(preset->name);
+        }
+    } else {
+        for (const auto &printer_and_preset : m_printer_compatible_presets) {
+            for (const std::shared_ptr<Preset> &preset : printer_and_preset.second) {
+                std::string candidate       = preset->name;
+                std::string candidate_short = get_filament_name(candidate);
+                if (candidate == short_or_full_name || candidate_short == short_or_full_name)
+                    target_preset_names.insert(preset->name);
+            }
+        }
+    }
+
+    if (target_preset_names.empty()) {
+        MessageDialog(parent, _L("Selected filament preset was not found."), _L("Delete preset"), wxOK | wxICON_WARNING).ShowModal();
+        return false;
+    }
+
+    wxString msg = wxString::Format(_L("Delete all presets named \"%s\"?"), from_u8(short_or_full_name));
+    if (wxID_YES != MessageDialog(parent, msg, _L("Delete preset"), wxYES_NO | wxNO_DEFAULT | wxICON_QUESTION).ShowModal())
+        return false;
+
+    std::string next_selected_preset_name = wxGetApp().preset_bundle->filaments.get_selected_preset().name;
+    for (const std::string &preset_name : target_preset_names) {
+        bool delete_result = delete_filament_preset_by_name(preset_name, next_selected_preset_name);
+        BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " preset name: " << preset_name << (delete_result ? " delete successful" : " delete failed");
+    }
+
+    wxGetApp().preset_bundle->filaments.select_preset_by_name(next_selected_preset_name, true);
+    for (size_t i = 0; i < wxGetApp().preset_bundle->filament_presets.size(); ++i) {
+        auto preset = wxGetApp().preset_bundle->filaments.find_preset(wxGetApp().preset_bundle->filament_presets[i]);
+        if (preset == nullptr)
+            wxGetApp().preset_bundle->filament_presets[i] = wxGetApp().preset_bundle->filaments.get_selected_preset_name();
+    }
+    return true;
 }
 
 CreatePresetForPrinterDialog::CreatePresetForPrinterDialog(wxWindow *parent, std::string filament_type, std::string filament_id, std::string filament_vendor, std::string filament_name)

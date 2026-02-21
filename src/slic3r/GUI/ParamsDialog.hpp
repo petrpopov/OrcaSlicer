@@ -18,6 +18,8 @@ class Filamentinformation : public wxObject
 public:
     std::string filament_id;
     std::string filament_name;
+    bool        delete_mode = false;
+    wxWindow   *source_window = nullptr;
 };
 
 class ParamsPanel;
@@ -32,12 +34,14 @@ public:
     void Popup();
 
     void set_editing_filament_id(std::string id) { m_editing_filament_id = id; }
+    void set_resume_window_after_hide(wxWindow *window) { m_resume_window_after_hide = window; }
 
 protected:
     void on_dpi_changed(const wxRect& suggested_rect) override;
 
 private:
     std::string       m_editing_filament_id;
+    wxWindow         *m_resume_window_after_hide = nullptr;
     ParamsPanel * m_panel;
     wxWindowDisabler *m_winDisabler = nullptr;
 };

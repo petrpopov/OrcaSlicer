@@ -135,6 +135,8 @@ private:
 
     wxString m_bbl_user_agent;
     std::string m_editing_filament_id;
+    std::string m_editing_filament_name;
+    bool m_resume_custom_filaments{false};
 };
 
 }} // namespace Slic3r::GUI

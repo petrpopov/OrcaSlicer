@@ -356,12 +356,19 @@ public:
     void     set_printer_name(const std::string &printer_name) { m_selected_printer = printer_name; }
     void     set_need_delete_preset_index(int need_delete_preset_index) { m_need_delete_preset_index = need_delete_preset_index; }
     void     set_need_edit_preset_index(int need_edit_preset_index) { m_need_edit_preset_index = need_edit_preset_index; }
+    void     set_auto_delete(bool auto_delete) { m_auto_delete = auto_delete; }
+    void     set_auto_delete_target_name(const std::string &name) { m_auto_delete_target_name = name; }
     void     delete_preset();
     void     edit_preset();
+    void     delete_filament(bool close_on_cancel = false);
+    void     delete_presets_by_short_name(const std::string &short_name, bool close_on_cancel = false);
+    size_t   get_total_preset_count() const;
+    std::shared_ptr<Preset> get_single_preset_for_edit() const;
+    bool     run_quick_delete(const std::string &short_or_full_name, wxWindow *dialog_parent = nullptr);
 
 private:
     void        on_dpi_changed(const wxRect &suggested_rect) override;
-    bool        get_same_filament_id_presets(std::string filament_id);
+    bool        get_same_filament_id_presets(std::string filament_id, const std::string &target_short_name = "");
     void        update_preset_tree();
     wxBoxSizer *create_filament_basic_info();
     wxBoxSizer *create_add_filament_btn();
@@ -383,6 +390,8 @@ private:
     wxStaticText *                                                        m_note_text                = nullptr;
     int                                                                   m_need_delete_preset_index = -1;
     int                                                                   m_need_edit_preset_index   = -1;
+    bool                                                                  m_auto_delete              = false;
+    std::string                                                           m_auto_delete_target_name;
     std::shared_ptr<Preset>                                               m_need_edit_preset;
     std::string                                                           m_selected_printer         = "";
     std::unordered_map<std::string, std::vector<std::shared_ptr<Preset>>> m_printer_compatible_presets;

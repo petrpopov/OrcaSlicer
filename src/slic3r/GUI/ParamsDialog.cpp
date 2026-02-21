@@ -52,6 +52,12 @@ ParamsDialog::ParamsDialog(wxWindow * parent)
         }
 #else
         Hide();
+        if (m_resume_window_after_hide && !m_resume_window_after_hide->IsBeingDeleted()) {
+            m_resume_window_after_hide->Show();
+            m_resume_window_after_hide->Raise();
+            m_resume_window_after_hide->SetFocus();
+        }
+        m_resume_window_after_hide = nullptr;
         if (!m_editing_filament_id.empty()) {
             Filamentinformation *filament_info = new Filamentinformation();
             filament_info->filament_id        = m_editing_filament_id;
