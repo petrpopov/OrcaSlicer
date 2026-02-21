@@ -42,6 +42,35 @@ namespace Slic3r { namespace GUI {
 json m_ProfileJson;
 
 namespace {
+static wxString web_safe_hex(const std::string &hex)
+{
+    wxString value = wxString::FromUTF8(hex);
+    value.Trim(true).Trim(false);
+    wxColour color(value);
+    if (!color.IsOk())
+        return wxString("#095191");
+    return wxString::Format("#%02X%02X%02X", color.Red(), color.Green(), color.Blue());
+}
+
+static void apply_accent_to_webview(GuideFrame *frame)
+{
+    if (frame == nullptr || wxGetApp().app_config == nullptr)
+        return;
+
+    wxString accent = web_safe_hex(wxGetApp().app_config->get("accent_color"));
+    wxColour accent_color(accent);
+    wxColour hover_color = accent_color.IsOk() ? accent_color.ChangeLightness(120) : wxColour("#0A4A85");
+    wxString hover = wxString::Format("#%02X%02X%02X", hover_color.Red(), hover_color.Green(), hover_color.Blue());
+
+    wxString js = wxString::Format(
+        "document.documentElement.style.setProperty('--main-color', '%s');"
+        "document.documentElement.style.setProperty('--main-color-fixed', '%s');"
+        "document.documentElement.style.setProperty('--main-color-hover', '%s');",
+        accent, accent, hover
+    );
+    frame->RunScript(js);
+}
+
 struct CustomFilamentGroupInfo {
     std::string filament_id;
     std::string display_name;
@@ -480,6 +509,7 @@ void GuideFrame::OnDocumentLoaded(wxWebViewEvent &evt)
     if (evt.GetURL() == m_browser->GetCurrentURL()) {
         // wxLogMessage("%s", "Document loaded; url='" + evt.GetURL() + "'");
     }
+    apply_accent_to_webview(this);
     UpdateState();
 
     // wxCommandEvent *event = new

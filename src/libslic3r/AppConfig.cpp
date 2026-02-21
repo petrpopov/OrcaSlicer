@@ -332,11 +332,11 @@ void AppConfig::set_defaults()
     }
 
     if (get("accent_color").empty()) {
-        set("accent_color", "#042F56");
+        set("accent_color", "#00AE42");
     }
 
     if (get("accent_color_preset").empty()) {
-        set("accent_color_preset", "matte_dark_blue");
+        set("accent_color_preset", "bambu_green");
     }
 
     if(get("auto_arrange").empty()) {
