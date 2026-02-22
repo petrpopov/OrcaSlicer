@@ -42,7 +42,7 @@ DropDown::DropDown(std::vector<Item> &items)
         std::make_pair(0x363636, (int) StateColor::Normal))
     , selector_border_color(std::make_pair(wxColour(Slic3r::ColorRGB::ORCA().r_uchar(), Slic3r::ColorRGB::ORCA().g_uchar(), Slic3r::ColorRGB::ORCA().b_uchar()), (int) StateColor::Hovered),
         std::make_pair(*wxWHITE, (int) StateColor::Normal))
-    , selector_background_color(std::make_pair(wxColour(Slic3r::ColorRGB::ORCA().r_uchar(), Slic3r::ColorRGB::ORCA().g_uchar(), Slic3r::ColorRGB::ORCA().b_uchar()).ChangeLightness(186), (int) StateColor::Checked),
+    , selector_background_color(std::make_pair(wxColour(Slic3r::ColorRGB::ORCA().r_uchar(), Slic3r::ColorRGB::ORCA().g_uchar(), Slic3r::ColorRGB::ORCA().b_uchar()).ChangeLightness(125), (int) StateColor::Checked),
         std::make_pair(*wxWHITE, (int) StateColor::Normal))
 {
 }

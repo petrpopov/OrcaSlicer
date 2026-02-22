@@ -41,7 +41,7 @@ std::string accent_color_for_preset(const std::string& preset)
     if (preset == ACCENT_PRESET_ORCA)
         return "#009688";
     if (preset == ACCENT_PRESET_MATTE_BLUE)
-        return "#042F56";
+        return "#095191";
     return "";
 }
 
@@ -1344,7 +1344,7 @@ void PreferencesDialog::create_items()
     auto item_use_bambu_connect = create_item_checkbox(_L("Use Bambu Lab Connect"), _L("Enable one-click handoff of print jobs to Bambu Connect."), "use_bambu_connect");
     g_sizer->Add(item_use_bambu_connect);
 
-    std::vector<wxString> accent_preset_labels = {_L("Matte Dark Blue"), _L("Bambu Green"), _L("Orca Default"), _L("Custom")};
+    std::vector<wxString> accent_preset_labels = {_L("Dark Blue"), _L("Bambu Green"), _L("Orca Default"), _L("Custom")};
     std::vector<std::string> accent_preset_keys = {ACCENT_PRESET_MATTE_BLUE, ACCENT_PRESET_BAMBU_GREEN, ACCENT_PRESET_ORCA, ACCENT_PRESET_CUSTOM};
     unsigned int accent_preset_index = 0;
     const auto current_accent_preset = app_config->get("accent_color_preset");

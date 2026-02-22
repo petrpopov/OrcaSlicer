@@ -58,7 +58,7 @@ ComboBox::ComboBox(wxWindow *parent,
             std::make_pair(accent_wx, (int) StateColor::Hovered),
             std::make_pair(0xDBDBDB, (int) StateColor::Normal)));
         TextInput::SetBackgroundColor(StateColor(std::make_pair(0xF0F0F1, (int) StateColor::Disabled),
-            std::make_pair(accent_wx.ChangeLightness(186), (int) StateColor::Focused),
+            std::make_pair(accent_wx.ChangeLightness(125), (int) StateColor::Focused),
             std::make_pair(*wxWHITE, (int) StateColor::Normal)));
         TextInput::SetLabelColor(StateColor(
             std::make_pair(0x6B6B6B, (int) StateColor::Disabled), // ORCA: Use same color for disabled text on combo boxes
@@ -74,6 +74,18 @@ ComboBox::ComboBox(wxWindow *parent,
     });
     drop.Bind(EVT_DISMISS, [this](auto &) {
         drop_down = false;
+        // Clear visual focus/hover states immediately when popup closes.
+        state_handler.set_state(0, StateHandler::Focused | StateHandler::Hovered);
+        // Popup dismissal click may not move focus away from the combo itself,
+        // which keeps focus styling active until the next click.
+        wxWindow *focused = wxWindow::FindFocus();
+        if (focused == this || focused == GetTextCtrl()) {
+            if (wxWindow *parent = GetParent())
+                parent->SetFocus();
+        }
+        if (GetTextCtrl())
+            GetTextCtrl()->Refresh();
+        Refresh();
         wxCommandEvent e(wxEVT_COMBOBOX_CLOSEUP);
         GetEventHandler()->ProcessEvent(e);
     });
