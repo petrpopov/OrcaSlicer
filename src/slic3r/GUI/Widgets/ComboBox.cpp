@@ -474,8 +474,12 @@ void ComboBox::onChar(wxKeyEvent &event)
     // Если символ обработан здесь, keyDown для него НЕ вызывается.
     if (drop_down && drop.IsSearchEnabled()) {
         wxChar ch = event.GetUnicodeKey();
-        if (ch != WXK_NONE && (unsigned int) ch >= 32u
+        // Исключаем: WXK_NONE, управляющие символы < 32, WXK_DELETE (127 = Backspace на macOS)
+        if (ch != WXK_NONE && (unsigned int) ch >= 32u && ch != WXK_DELETE
                 && !event.ControlDown() && !event.MetaDown()) {
+            // GetUnicodeKey() в CHAR_HOOK также возвращает uppercase — корректируем регистр
+            if (!event.ShiftDown())
+                ch = (wxChar) wxTolower((wchar_t) ch);
             drop.appendSearchChar(ch);
             return; // поглощаем — keyDown не получит этот символ
         }
