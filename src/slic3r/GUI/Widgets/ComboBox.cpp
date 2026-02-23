@@ -66,6 +66,11 @@ ComboBox::ComboBox(wxWindow *parent,
     }
     if (auto scroll = GetScrollParent(this))
         scroll->Bind(wxEVT_MOVE, &ComboBox::onMove, this);
+    // wxEVT_CHAR_HOOK генерируется напрямую из [NSEvent characters] (текущая раскладка)
+    // ДО EVT_KEY_DOWN, и работает для любого NSView — в отличие от EVT_CHAR
+    // который требует NSTextInputClient (только нативные NSTextField).
+    Bind(wxEVT_CHAR_HOOK, &ComboBox::onChar, this);
+
     drop.Bind(wxEVT_COMBOBOX, [this](wxCommandEvent &e) {
         SetSelection(e.GetInt());
         e.SetEventObject(this);
@@ -461,6 +466,22 @@ WXLRESULT ComboBox::MSWWindowProc(WXUINT nMsg, WXWPARAM wParam, WXLPARAM lParam)
 }
 
 #endif
+
+void ComboBox::onChar(wxKeyEvent &event)
+{
+    // EVT_CHAR_HOOK вызывается ДО keyDown и даёт GetUnicodeKey() из [NSEvent characters]
+    // — правильный символ по текущей раскладке (кириллица, etc.) для любого NSView.
+    // Если символ обработан здесь, keyDown для него НЕ вызывается.
+    if (drop_down && drop.IsSearchEnabled()) {
+        wxChar ch = event.GetUnicodeKey();
+        if (ch != WXK_NONE && (unsigned int) ch >= 32u
+                && !event.ControlDown() && !event.MetaDown()) {
+            drop.appendSearchChar(ch);
+            return; // поглощаем — keyDown не получит этот символ
+        }
+    }
+    event.Skip(); // остальное (стрелки, Enter, Esc, Backspace) — идёт в keyDown
+}
 
 void ComboBox::sendComboBoxEvent()
 {
