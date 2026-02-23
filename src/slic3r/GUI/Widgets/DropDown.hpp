@@ -158,6 +158,7 @@ private:
     void mouseCaptureLost(wxMouseCaptureLostEvent &event);
     void mouseMove(wxMouseEvent &event);
     void mouseWheelMoved(wxMouseEvent &event);
+    void onChar(wxKeyEvent &event); // обработка печатных символов (EVT_CHAR, после раскладки)
 
     void sendDropDownEvent();
 

@@ -23,6 +23,7 @@ EVT_LEFT_UP(DropDown::mouseReleased)
 EVT_MOUSE_CAPTURE_LOST(DropDown::mouseCaptureLost)
 EVT_MOTION(DropDown::mouseMove)
 EVT_MOUSEWHEEL(DropDown::mouseWheelMoved)
+EVT_CHAR(DropDown::onChar)
 
 // catch paint events
 EVT_PAINT(DropDown::paintEvent)
@@ -88,6 +89,8 @@ void DropDown::Create(wxWindow *parent, long style)
             m_cursor_visible = true;
             if (!m_cursor_timer.IsRunning())
                 m_cursor_timer.Start(530);
+            // Устанавливаем фокус на DropDown для получения клавиатурных событий
+            SetFocus();
         } else {
             m_cursor_timer.Stop();
             m_cursor_visible = true;
@@ -954,6 +957,26 @@ void DropDown::mouseWheelMoved(wxMouseEvent &event)
             SetToolTip(items[index].tip);
     }
     paintNow();
+}
+
+void DropDown::onChar(wxKeyEvent &event)
+{
+    // EVT_CHAR генерируется ПОСЛЕ обработки системой раскладки клавиатуры
+    // и возвращает правильный Unicode-символ для любой раскладки (кириллица, etc.)
+    if (m_enable_search) {
+        wxChar ch = event.GetUnicodeKey();
+        // Проверяем: WXK_NONE, управляющие символы < 32, Control/Meta модификаторы
+        if (ch != WXK_NONE && (unsigned int) ch >= 32u
+                && !event.ControlDown() && !event.MetaDown()) {
+            // Нормализуем регистр: если Shift не нажат, приводим к нижнему
+            if (!event.ShiftDown())
+                ch = (wxChar) wxTolower((wchar_t) ch);
+            appendSearchChar(ch);
+            return; // символ обработан — не вызываем event.Skip()
+        }
+    }
+    // Для остальных случаев — передаём дальше
+    event.Skip();
 }
 
 // currently unused events
