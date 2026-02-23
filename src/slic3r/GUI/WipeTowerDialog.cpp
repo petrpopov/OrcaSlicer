@@ -25,6 +25,35 @@ static void update_ui(wxWindow* window)
     Slic3r::GUI::wxGetApp().UpdateDarkUI(window);
 }
 
+static wxString wipe_safe_hex(const std::string &hex)
+{
+    wxColour color(wxString::FromUTF8(hex));
+    if (!color.IsOk()) {
+        const auto accent = Slic3r::ColorRGB::ORCA();
+        color = wxColour(accent.r_uchar(), accent.g_uchar(), accent.b_uchar());
+    }
+    return wxString::Format("#%02X%02X%02X", color.Red(), color.Green(), color.Blue());
+}
+
+static void apply_accent_to_wiping_webview(wxWebView *webview)
+{
+    if (webview == nullptr || wxGetApp().app_config == nullptr)
+        return;
+
+    const wxString accent = wipe_safe_hex(wxGetApp().app_config->get("accent_color"));
+    wxColour accent_color(accent);
+    wxColour hover_color = accent_color.IsOk() ? accent_color.ChangeLightness(112) : wxColour("#0A4A85");
+    const wxString hover = wxString::Format("#%02X%02X%02X", hover_color.Red(), hover_color.Green(), hover_color.Blue());
+
+    const wxString script = wxString::Format(
+        "document.documentElement.style.setProperty('--main-color', '%s');"
+        "document.documentElement.style.setProperty('--main-color-fixed', '%s');"
+        "document.documentElement.style.setProperty('--main-color-hover', '%s');",
+        accent, accent, hover
+    );
+    webview->RunScript(script);
+}
+
 RammingDialog::RammingDialog(wxWindow* parent,const std::string& parameters)
 : wxDialog(parent, wxID_ANY, _(L("Ramming customization")), wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE/* | wxRESIZE_BORDER*/)
 {
@@ -438,6 +467,7 @@ WipingDialog::WipingDialog(wxWindow* parent, const int max_flush_volume) :
                 auto table_obj_str = BuildTableObjStr();
                 auto text_obj_str = BuildTextObjStr(true);
                 CallAfter([table_obj_str, text_obj_str, this] {
+                    apply_accent_to_wiping_webview(m_webview);
                     wxString script1 = wxString::Format("buildTable(%s)", table_obj_str);
                     m_webview->RunScript(script1);
                     wxString script2 = wxString::Format("buildText(%s)", text_obj_str);
