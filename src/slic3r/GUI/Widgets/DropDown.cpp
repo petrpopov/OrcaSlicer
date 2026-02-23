@@ -89,6 +89,8 @@ void DropDown::Create(wxWindow *parent, long style)
             m_cursor_visible = true;
             if (!m_cursor_timer.IsRunning())
                 m_cursor_timer.Start(530);
+            // Устанавливаем фокус на DropDown для получения клавиатурных событий
+            SetFocus();
         } else {
             m_cursor_timer.Stop();
             m_cursor_visible = true;
