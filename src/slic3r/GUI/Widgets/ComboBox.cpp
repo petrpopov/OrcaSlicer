@@ -10,7 +10,6 @@ EVT_LEFT_DOWN(ComboBox::mouseDown)
 EVT_LEFT_DCLICK(ComboBox::mouseDown)
 //EVT_MOUSEWHEEL(ComboBox::mouseWheelMoved)
 EVT_KEY_DOWN(ComboBox::keyDown)
-EVT_CHAR(ComboBox::onChar)
 
 // catch paint events
 END_EVENT_TABLE()
@@ -433,31 +432,6 @@ void ComboBox::onMove(wxMoveEvent &event)
 {
     event.Skip();
     drop.Hide();
-}
-
-void ComboBox::onChar(wxKeyEvent &event)
-{
-    // EVT_CHAR генерируется ПОСЛЕ обработки системой раскладки клавиатуры
-    // и возвращает правильный Unicode-символ для любой раскладки (кириллица, etc.)
-    const bool search_open = drop_down && drop.IsSearchEnabled();
-
-    if (search_open) {
-        wxChar ch = event.GetUnicodeKey();
-        // Проверяем: WXK_NONE, управляющие символы < 32, Control/Meta модификаторы
-        if (ch != WXK_NONE && (unsigned int) ch >= 32u
-                && !event.ControlDown() && !event.MetaDown()) {
-            // Нормализуем регистр: если Shift не нажат, приводим к нижнему
-            if (!event.ShiftDown())
-                ch = (wxChar) wxTolower((wchar_t) ch);
-            drop.appendSearchChar(ch);
-            return; // символ обработан — не вызываем event.Skip()
-        }
-        // Если символ не прошёл проверку (например, WXK_NONE), всё равно не передаём дальше
-        // чтобы не закрывать попап
-        return;
-    }
-    // Для остальных случаев (поиск не активен) — передаём дальше
-    event.Skip();
 }
 
 void ComboBox::OnEdit()
