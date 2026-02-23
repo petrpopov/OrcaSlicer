@@ -73,6 +73,10 @@ private:
     std::vector<int> m_filtered_indices; // display_row -> items[] index при активном поиске
     static constexpr int SEARCH_BOX_HEIGHT = 36; // высота строки поиска в DIP
 
+    // Мигающий курсор в строке поиска
+    bool             m_cursor_visible  = true;
+    wxTimer          m_cursor_timer;
+
 public:
     DropDown(std::vector<Item> &items);
 

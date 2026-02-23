@@ -10,6 +10,9 @@ EVT_LEFT_DOWN(ComboBox::mouseDown)
 EVT_LEFT_DCLICK(ComboBox::mouseDown)
 //EVT_MOUSEWHEEL(ComboBox::mouseWheelMoved)
 EVT_KEY_DOWN(ComboBox::keyDown)
+// EVT_CHAR обрабатывает печатные символы — он приходит ПОСЛЕ KEY_DOWN
+// и несёт правильный Unicode с учётом раскладки, регистра и IME
+EVT_CHAR(ComboBox::onChar)
 
 // catch paint events
 END_EVENT_TABLE()
@@ -370,19 +373,18 @@ void ComboBox::keyDown(wxKeyEvent& event)
             }
             break;
         case WXK_SPACE:
-            if (drop_down) {
-                if (search_open) {
-                    // Пробел добавляется в поисковый запрос
-                    drop.appendSearchChar(wxT(' '));
-                } else {
-                    drop.DismissAndNotify();
-                }
-            } else if (drop.HasDismissLongTime()) {
+            if (drop_down && !search_open) {
+                // Без поиска пробел закрывает список
+                drop.DismissAndNotify();
+            } else if (!drop_down && drop.HasDismissLongTime()) {
                 drop.autoPosition();
                 drop_down = true;
                 drop.Popup();
                 wxCommandEvent e(wxEVT_COMBOBOX_DROPDOWN);
                 GetEventHandler()->ProcessEvent(e);
+            } else {
+                // В режиме поиска пробел пропускаем в EVT_CHAR → onChar
+                event.Skip();
             }
             break;
         case WXK_ESCAPE:
@@ -423,14 +425,7 @@ void ComboBox::keyDown(wxKeyEvent& event)
             HandleAsNavigationKey(event);
             break;
         default:
-            if (search_open) {
-                // Передаём печатные символы (в т.ч. кириллицу) в строку поиска
-                wxChar ch = event.GetUnicodeKey();
-                if (ch != WXK_NONE && ch >= 32 && !event.ControlDown() && !event.MetaDown()) {
-                    drop.appendSearchChar(ch);
-                    break;
-                }
-            }
+            // Все печатные символы — в EVT_CHAR (onChar): там правильный регистр и кириллица
             event.Skip();
             break;
     }
@@ -459,6 +454,21 @@ WXLRESULT ComboBox::MSWWindowProc(WXUINT nMsg, WXWPARAM wParam, WXLPARAM lParam)
 }
 
 #endif
+
+void ComboBox::onChar(wxKeyEvent &event)
+{
+    // EVT_CHAR даёт правильный Unicode: корректный регистр и кириллицу через IME.
+    // KEY_DOWN + GetUnicodeKey() на macOS даёт uppercase и не работает с кириллицей.
+    if (drop_down && drop.IsSearchEnabled()) {
+        wxChar ch = event.GetUnicodeKey();
+        if (ch != WXK_NONE && (unsigned int) ch >= 32u
+                && !event.ControlDown() && !event.MetaDown()) {
+            drop.appendSearchChar(ch);
+            return; // событие поглощено
+        }
+    }
+    event.Skip();
+}
 
 void ComboBox::sendComboBoxEvent()
 {

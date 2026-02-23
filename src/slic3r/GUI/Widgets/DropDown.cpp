@@ -73,6 +73,26 @@ void DropDown::Create(wxWindow *parent, long style)
     //  such as losting mouse move, and dismissing soon on first LEFT_DOWN event.
     Bind(wxEVT_IDLE, [] (wxIdleEvent & evt) {});
 #endif
+
+    // Таймер мигания курсора в строке поиска (период 530 мс)
+    m_cursor_timer.SetOwner(this);
+    Bind(wxEVT_TIMER, [this](wxTimerEvent &) {
+        if (!m_enable_search) return;
+        m_cursor_visible = !m_cursor_visible;
+        paintNow();
+    });
+    // Запускаем/останавливаем таймер при показе/скрытии попапа
+    Bind(wxEVT_SHOW, [this](wxShowEvent &e) {
+        e.Skip();
+        if (e.IsShown() && m_enable_search) {
+            m_cursor_visible = true;
+            if (!m_cursor_timer.IsRunning())
+                m_cursor_timer.Start(530);
+        } else {
+            m_cursor_timer.Stop();
+            m_cursor_visible = true;
+        }
+    });
 }
 
 void DropDown::Invalidate(bool clear)
@@ -372,11 +392,14 @@ void DropDown::render(wxDC &dc)
             dc.SetTextForeground(wxColour(0x909090));
             dc.DrawText(_L("Search..."), wxPoint(tx, ty));
         } else {
-            // Набранный текст с курсором
+            // Набранный текст с мигающим курсором
             dc.SetTextForeground(text_color.colorForStates(states));
             wxRect clipR(sRect.x + FromDIP(2), sRect.y, sRect.width - FromDIP(4), sRect.height);
             dc.SetClippingRegion(clipR);
-            dc.DrawText(m_search_text + wxT("|"), wxPoint(tx, ty));
+            wxString display = m_search_text;
+            if (m_cursor_visible)
+                display += wxT("|");
+            dc.DrawText(display, wxPoint(tx, ty));
             dc.DestroyClippingRegion();
         }
 
@@ -451,6 +474,9 @@ void DropDown::render(wxDC &dc)
         rcContent.width -= szBmp.x + 5;
     }
 
+    // true когда поиск активен — в этом режиме меняем отображение группируемых элементов
+    const bool in_search = m_enable_search && !m_search_text.IsEmpty();
+
     // Вспомогательная лямбда для отрисовки одного элемента
     auto drawItem = [&](int i, int index) {
         auto &item   = items[i];
@@ -487,9 +513,15 @@ void DropDown::render(wxDC &dc)
             pt.x += size2.x + 5;
             pt.y = rcContent.y;
         }
-        auto text = group.IsEmpty()
-                        ? (item.group.IsEmpty() ? item.text : item.group)
-                        : (item.text.StartsWith(group) && !group.EndsWith(' ') ? item.text.substr(group.size()).Trim(false) : item.text);
+        // В режиме поиска всегда показываем item.text (полное имя) вместо item.group (имя группы).
+        // Это позволяет видеть конкретный пресет, а не название категории, и делает его кликабельным.
+        auto text = in_search
+                        ? item.text
+                        : (group.IsEmpty()
+                               ? (item.group.IsEmpty() ? item.text : item.group)
+                               : (item.text.StartsWith(group) && !group.EndsWith(' ')
+                                      ? item.text.substr(group.size()).Trim(false)
+                                      : item.text));
         if (!text_off && !text.IsEmpty()) {
             wxSize tSize = dc.GetMultiLineTextExtent(text);
             if (pt.x + tSize.x > rcContent.GetRight()) {
@@ -502,7 +534,8 @@ void DropDown::render(wxDC &dc)
             dc.SetFont(GetFont());
             dc.SetTextForeground(text_color.colorForStates(states2));
             dc.DrawText(text, pt);
-            if (group.IsEmpty() && !item.group.IsEmpty()) {
+            // Стрелку (→) рисуем только в обычном режиме — в поиске пресеты кликабельны напрямую
+            if (!in_search && group.IsEmpty() && !item.group.IsEmpty()) {
                 auto szBmp = arrow_bitmap.GetBmpSize();
                 pt.x = rcContent.GetRight() - szBmp.x - 5;
                 pt.y = rcContent.y + (rcContent.height - szBmp.y) / 2;
@@ -811,7 +844,9 @@ void DropDown::mouseReleased(wxMouseEvent& event)
             ReleaseMouse();
         if (hover_item < 0)
             return;
-        if (hover_item >= 0 && (subDropDown == nullptr || subDropDown->group.empty())) { // not moved
+        // В режиме поиска группируемые элементы выбираются напрямую (без субпопапа)
+        const bool in_search_now = m_enable_search && !m_search_text.IsEmpty();
+        if (hover_item >= 0 && (in_search_now || subDropDown == nullptr || subDropDown->group.empty())) { // not moved
             sendDropDownEvent();
             if (mainDropDown)
                 mainDropDown->hover_item = -1; // To Dismiss mainDropDown
