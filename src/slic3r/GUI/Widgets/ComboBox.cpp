@@ -350,10 +350,16 @@ void ComboBox::mouseWheelMoved(wxMouseEvent &event)
 
 void ComboBox::keyDown(wxKeyEvent& event)
 {
+    const bool search_open = drop_down && drop.IsSearchEnabled();
+
     switch (event.GetKeyCode()) {
         case WXK_RETURN:
-        case WXK_SPACE:
+        case WXK_NUMPAD_ENTER:
             if (drop_down) {
+                if (search_open) {
+                    // При активном поиске Enter выбирает выделенный (или первый) элемент
+                    drop.selectHoveredItemForSearch();
+                }
                 drop.DismissAndNotify();
             } else if (drop.HasDismissLongTime()) {
                 drop.autoPosition();
@@ -363,23 +369,68 @@ void ComboBox::keyDown(wxKeyEvent& event)
                 GetEventHandler()->ProcessEvent(e);
             }
             break;
+        case WXK_SPACE:
+            if (drop_down) {
+                if (search_open) {
+                    // Пробел добавляется в поисковый запрос
+                    drop.appendSearchChar(wxT(' '));
+                } else {
+                    drop.DismissAndNotify();
+                }
+            } else if (drop.HasDismissLongTime()) {
+                drop.autoPosition();
+                drop_down = true;
+                drop.Popup();
+                wxCommandEvent e(wxEVT_COMBOBOX_DROPDOWN);
+                GetEventHandler()->ProcessEvent(e);
+            }
+            break;
+        case WXK_ESCAPE:
+            if (drop_down) {
+                drop.DismissAndNotify();
+            } else {
+                event.Skip();
+            }
+            break;
+        case WXK_BACK:
+            if (search_open) {
+                // Backspace удаляет последний символ поискового запроса
+                drop.deleteSearchChar();
+            } else {
+                event.Skip();
+            }
+            break;
         case WXK_UP:
         case WXK_DOWN:
         case WXK_LEFT:
         case WXK_RIGHT:
-            if ((event.GetKeyCode() == WXK_UP || event.GetKeyCode() == WXK_LEFT) && GetSelection() > 0) {
-                SetSelection(GetSelection() - 1);
-            } else if ((event.GetKeyCode() == WXK_DOWN || event.GetKeyCode() == WXK_RIGHT) && GetSelection() + 1 < items.size()) {
-                SetSelection(GetSelection() + 1);
+            if (search_open) {
+                // При открытом поиске стрелки навигируют по отфильтрованному списку
+                int delta = (event.GetKeyCode() == WXK_DOWN || event.GetKeyCode() == WXK_RIGHT) ? 1 : -1;
+                drop.moveHoverForSearch(delta);
             } else {
-                break;
+                if ((event.GetKeyCode() == WXK_UP || event.GetKeyCode() == WXK_LEFT) && GetSelection() > 0) {
+                    SetSelection(GetSelection() - 1);
+                } else if ((event.GetKeyCode() == WXK_DOWN || event.GetKeyCode() == WXK_RIGHT) && GetSelection() + 1 < items.size()) {
+                    SetSelection(GetSelection() + 1);
+                } else {
+                    break;
+                }
+                sendComboBoxEvent();
             }
-            sendComboBoxEvent();
             break;
         case WXK_TAB:
             HandleAsNavigationKey(event);
             break;
         default:
+            if (search_open) {
+                // Передаём печатные символы (в т.ч. кириллицу) в строку поиска
+                wxChar ch = event.GetUnicodeKey();
+                if (ch != WXK_NONE && ch >= 32 && !event.ControlDown() && !event.MetaDown()) {
+                    drop.appendSearchChar(ch);
+                    break;
+                }
+            }
             event.Skip();
             break;
     }
