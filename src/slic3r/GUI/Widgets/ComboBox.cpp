@@ -66,6 +66,11 @@ ComboBox::ComboBox(wxWindow *parent,
     }
     if (auto scroll = GetScrollParent(this))
         scroll->Bind(wxEVT_MOVE, &ComboBox::onMove, this);
+    // wxEVT_CHAR_HOOK генерируется напрямую из [NSEvent characters] (текущая раскладка)
+    // ДО EVT_KEY_DOWN, и работает для любого NSView — в отличие от EVT_CHAR
+    // который требует NSTextInputClient (только нативные NSTextField).
+    Bind(wxEVT_CHAR_HOOK, &ComboBox::onChar, this);
+
     drop.Bind(wxEVT_COMBOBOX, [this](wxCommandEvent &e) {
         SetSelection(e.GetInt());
         e.SetEventObject(this);
@@ -350,10 +355,16 @@ void ComboBox::mouseWheelMoved(wxMouseEvent &event)
 
 void ComboBox::keyDown(wxKeyEvent& event)
 {
+    const bool search_open = drop_down && drop.IsSearchEnabled();
+
     switch (event.GetKeyCode()) {
         case WXK_RETURN:
-        case WXK_SPACE:
+        case WXK_NUMPAD_ENTER:
             if (drop_down) {
+                if (search_open) {
+                    // При активном поиске Enter выбирает выделенный (или первый) элемент
+                    drop.selectHoveredItemForSearch();
+                }
                 drop.DismissAndNotify();
             } else if (drop.HasDismissLongTime()) {
                 drop.autoPosition();
@@ -363,23 +374,70 @@ void ComboBox::keyDown(wxKeyEvent& event)
                 GetEventHandler()->ProcessEvent(e);
             }
             break;
+        case WXK_SPACE:
+            if (drop_down && search_open) {
+                // Пробел добавляется в поисковый запрос
+                drop.appendSearchChar(wxT(' '));
+            } else if (drop_down) {
+                drop.DismissAndNotify();
+            } else if (drop.HasDismissLongTime()) {
+                drop.autoPosition();
+                drop_down = true;
+                drop.Popup();
+                wxCommandEvent e(wxEVT_COMBOBOX_DROPDOWN);
+                GetEventHandler()->ProcessEvent(e);
+            }
+            break;
+        case WXK_ESCAPE:
+            if (drop_down) {
+                drop.DismissAndNotify();
+            } else {
+                event.Skip();
+            }
+            break;
+        case WXK_BACK:
+            if (search_open) {
+                // Backspace удаляет последний символ поискового запроса
+                drop.deleteSearchChar();
+            } else {
+                event.Skip();
+            }
+            break;
         case WXK_UP:
         case WXK_DOWN:
         case WXK_LEFT:
         case WXK_RIGHT:
-            if ((event.GetKeyCode() == WXK_UP || event.GetKeyCode() == WXK_LEFT) && GetSelection() > 0) {
-                SetSelection(GetSelection() - 1);
-            } else if ((event.GetKeyCode() == WXK_DOWN || event.GetKeyCode() == WXK_RIGHT) && GetSelection() + 1 < items.size()) {
-                SetSelection(GetSelection() + 1);
+            if (search_open) {
+                // При открытом поиске стрелки навигируют по отфильтрованному списку
+                int delta = (event.GetKeyCode() == WXK_DOWN || event.GetKeyCode() == WXK_RIGHT) ? 1 : -1;
+                drop.moveHoverForSearch(delta);
             } else {
-                break;
+                if ((event.GetKeyCode() == WXK_UP || event.GetKeyCode() == WXK_LEFT) && GetSelection() > 0) {
+                    SetSelection(GetSelection() - 1);
+                } else if ((event.GetKeyCode() == WXK_DOWN || event.GetKeyCode() == WXK_RIGHT) && GetSelection() + 1 < items.size()) {
+                    SetSelection(GetSelection() + 1);
+                } else {
+                    break;
+                }
+                sendComboBoxEvent();
             }
-            sendComboBoxEvent();
             break;
         case WXK_TAB:
             HandleAsNavigationKey(event);
             break;
         default:
+            if (search_open) {
+                // GetUnicodeKey() в EVT_KEY_DOWN на macOS даёт символ по текущей раскладке
+                // (включая кириллицу), но всегда в uppercase-форме — корректируем регистр.
+                wxChar ch = event.GetUnicodeKey();
+                if (ch != WXK_NONE && (unsigned int) ch >= 32u
+                        && !event.ControlDown() && !event.MetaDown()) {
+                    if (!event.ShiftDown())
+                        ch = (wxChar) wxTolower((wchar_t) ch);
+                    drop.appendSearchChar(ch);
+                    break;
+                }
+            }
             event.Skip();
             break;
     }
@@ -408,6 +466,26 @@ WXLRESULT ComboBox::MSWWindowProc(WXUINT nMsg, WXWPARAM wParam, WXLPARAM lParam)
 }
 
 #endif
+
+void ComboBox::onChar(wxKeyEvent &event)
+{
+    // EVT_CHAR_HOOK вызывается ДО keyDown и даёт GetUnicodeKey() из [NSEvent characters]
+    // — правильный символ по текущей раскладке (кириллица, etc.) для любого NSView.
+    // Если символ обработан здесь, keyDown для него НЕ вызывается.
+    if (drop_down && drop.IsSearchEnabled()) {
+        wxChar ch = event.GetUnicodeKey();
+        // Исключаем: WXK_NONE, управляющие символы < 32, WXK_DELETE (127 = Backspace на macOS)
+        if (ch != WXK_NONE && (unsigned int) ch >= 32u && ch != WXK_DELETE
+                && !event.ControlDown() && !event.MetaDown()) {
+            // GetUnicodeKey() в CHAR_HOOK также возвращает uppercase — корректируем регистр
+            if (!event.ShiftDown())
+                ch = (wxChar) wxTolower((wchar_t) ch);
+            drop.appendSearchChar(ch);
+            return; // поглощаем — keyDown не получит этот символ
+        }
+    }
+    event.Skip(); // остальное (стрелки, Enter, Esc, Backspace) — идёт в keyDown
+}
 
 void ComboBox::sendComboBoxEvent()
 {

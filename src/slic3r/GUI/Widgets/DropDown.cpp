@@ -1,6 +1,7 @@
 #include "DropDown.hpp"
 #include "Label.hpp"
 #include "libslic3r/Color.hpp"
+#include "slic3r/GUI/I18N.hpp"
 
 #include <cstdio>
 #include <wx/display.h>
@@ -72,6 +73,26 @@ void DropDown::Create(wxWindow *parent, long style)
     //  such as losting mouse move, and dismissing soon on first LEFT_DOWN event.
     Bind(wxEVT_IDLE, [] (wxIdleEvent & evt) {});
 #endif
+
+    // Таймер мигания курсора в строке поиска (период 530 мс)
+    m_cursor_timer.SetOwner(this);
+    Bind(wxEVT_TIMER, [this](wxTimerEvent &) {
+        if (!m_enable_search) return;
+        m_cursor_visible = !m_cursor_visible;
+        paintNow();
+    });
+    // Запускаем/останавливаем таймер при показе/скрытии попапа
+    Bind(wxEVT_SHOW, [this](wxShowEvent &e) {
+        e.Skip();
+        if (e.IsShown() && m_enable_search) {
+            m_cursor_visible = true;
+            if (!m_cursor_timer.IsRunning())
+                m_cursor_timer.Start(530);
+        } else {
+            m_cursor_timer.Stop();
+            m_cursor_visible = true;
+        }
+    });
 }
 
 void DropDown::Invalidate(bool clear)
@@ -159,6 +180,89 @@ void DropDown::SetAlignIcon(bool align) { align_icon = align; }
 void DropDown::Rescale()
 {
     need_sync = true;
+}
+
+void DropDown::SetEnableSearch(bool enable)
+{
+    // Поиск реализован как нарисованное поле через wxDC — без дочернего wxTextCtrl.
+    // Ввод перехватывается в ComboBox::keyDown, пока попап открыт.
+    m_enable_search = enable;
+    need_sync = true;
+}
+
+void DropDown::ClearSearch()
+{
+    if (!m_enable_search) return;
+    m_search_text.clear();
+    m_filtered_indices.clear();
+    hover_item = -1;
+    offset     = wxPoint();
+}
+
+void DropDown::appendSearchChar(wxChar ch)
+{
+    m_search_text += ch;
+    updateFilter();
+}
+
+void DropDown::deleteSearchChar()
+{
+    if (!m_search_text.IsEmpty()) {
+        m_search_text.RemoveLast();
+        updateFilter();
+    }
+}
+
+void DropDown::moveHoverForSearch(int delta)
+{
+    int vc = (int) visibleCount();
+    if (vc == 0) return;
+    if (hover_item < 0)
+        hover_item = delta > 0 ? 0 : vc - 1;
+    else
+        hover_item = std::max(0, std::min(hover_item + delta, vc - 1));
+    paintNow();
+}
+
+bool DropDown::selectHoveredItemForSearch()
+{
+    if (hover_item < 0 && visibleCount() > 0)
+        hover_item = 0;
+    if (hover_item < 0) return false;
+    sendDropDownEvent();
+    return true;
+}
+
+void DropDown::updateFilter()
+{
+    m_filtered_indices.clear();
+    offset     = wxPoint();
+    hover_item = -1;
+
+    wxString lower = m_search_text.Lower();
+    for (int i = 0; i < (int) items.size(); ++i) {
+        auto &item = items[i];
+        // Заголовки-разделители не включаем в отфильтрованный список
+        if (item.style & DD_ITEM_STYLE_SPLIT_ITEM)
+            continue;
+        if (!lower.IsEmpty()) {
+            bool text_match  = item.text.Lower().Contains(lower);
+            bool alias_match = !item.alias.IsEmpty() && item.alias.Lower().Contains(lower);
+            if (!text_match && !alias_match)
+                continue;
+        }
+        m_filtered_indices.push_back(i);
+    }
+    need_sync = true;
+    messureSize();
+    paintNow();
+}
+
+size_t DropDown::visibleCount() const
+{
+    if (m_enable_search && !m_search_text.IsEmpty())
+        return m_filtered_indices.size();
+    return count;
 }
 
 bool DropDown::HasDismissLongTime()
@@ -259,8 +363,6 @@ void DropDown::render(wxDC &dc)
         states |= subDropDown->state_handler.states();
     dc.SetPen(wxPen(border_color.colorForStates(states)));
     dc.SetBrush(wxBrush(StateColor::darkModeColorFor(GetBackgroundColour())));
-    // if (GetWindowStyle() & wxBORDER_NONE)
-    //    dc.SetPen(wxNullPen);
 
     // draw background
     wxSize size = GetSize();
@@ -269,14 +371,53 @@ void DropDown::render(wxDC &dc)
     else
         dc.DrawRoundedRectangle(0, 0, size.x, size.y, radius);
 
+    // Отступ для строки поиска сверху
+    int search_h = m_enable_search ? FromDIP(SEARCH_BOX_HEIGHT) : 0;
+
+    // Отрисовка поля поиска (без дочернего виджета — всё через wxDC)
+    if (m_enable_search) {
+        wxRect sRect(FromDIP(4), FromDIP(3), size.x - FromDIP(8), search_h - FromDIP(6));
+        // Фон поля поиска — чуть светлее / темнее фона попапа
+        dc.SetBrush(wxBrush(StateColor::darkModeColorFor(wxColour(0xFFFFFF))));
+        dc.SetPen(wxPen(wxColour(0x909090)));
+        dc.DrawRoundedRectangle(sRect, FromDIP(3));
+
+        dc.SetFont(GetFont());
+        wxSize fontSz = dc.GetTextExtent(wxT("Ag"));
+        int ty = sRect.y + (sRect.height - fontSz.y) / 2;
+        int tx = sRect.x + FromDIP(6);
+
+        if (m_search_text.IsEmpty()) {
+            // Плейсхолдер серым цветом
+            dc.SetTextForeground(wxColour(0x909090));
+            dc.DrawText(_L("Search..."), wxPoint(tx, ty));
+        } else {
+            // Набранный текст с мигающим курсором
+            dc.SetTextForeground(text_color.colorForStates(states));
+            wxRect clipR(sRect.x + FromDIP(2), sRect.y, sRect.width - FromDIP(4), sRect.height);
+            dc.SetClippingRegion(clipR);
+            wxString display = m_search_text;
+            if (m_cursor_visible)
+                display += wxT("|");
+            dc.DrawText(display, wxPoint(tx, ty));
+            dc.DestroyClippingRegion();
+        }
+
+        // Разделительная линия под строкой поиска
+        dc.SetPen(wxPen(border_color.colorForStates(states)));
+        dc.DrawLine(0, search_h, size.x, search_h);
+    }
+    // Высота области под список (без строки поиска)
+    int avail_h = size.y - search_h;
+
     int selected_item = selectedItem();
     int hover_index   = hoverIndex();
 
     // draw hover rectangle
-    wxRect rcContent = {{0, offset.y}, rowSize};
+    wxRect rcContent = {{0, search_h + offset.y}, rowSize};
     if (hover_item >= 0 && (states & StateColor::Hovered) && (hover_index < 0 || !(items[hover_index].style & DD_ITEM_STYLE_SPLIT_ITEM))) {
         rcContent.y += rowSize.y * hover_item;
-        if (rcContent.GetBottom() > 0 && rcContent.y < size.y) {
+        if (rcContent.GetBottom() > search_h && rcContent.y < size.y) {
             if (selected_item == hover_item)
                 dc.SetBrush(wxBrush(selector_background_color.colorForStates(states | StateColor::Checked)));
             dc.SetPen(wxPen(selector_border_color.colorForStates(states)));
@@ -284,19 +425,19 @@ void DropDown::render(wxDC &dc)
             dc.DrawRectangle(rcContent);
             rcContent.Inflate(4, 1);
         }
-        rcContent.y = offset.y;
+        rcContent.y = search_h + offset.y;
     }
     // draw checked rectangle
     if (selected_item >= 0 && (selected_item != hover_item || (states & StateColor::Hovered) == 0)) {
         rcContent.y += rowSize.y * selected_item;
-        if (rcContent.GetBottom() > 0 && rcContent.y < size.y) {
+        if (rcContent.GetBottom() > search_h && rcContent.y < size.y) {
             dc.SetBrush(wxBrush(selector_background_color.colorForStates(states | StateColor::Checked)));
             dc.SetPen(wxPen(selector_background_color.colorForStates(states)));
             rcContent.Deflate(4, 1);
             dc.DrawRectangle(rcContent);
             rcContent.Inflate(4, 1);
         }
-        rcContent.y = offset.y;
+        rcContent.y = search_h + offset.y;
     }
     dc.SetBrush(*wxTRANSPARENT_BRUSH);
     {
@@ -304,11 +445,13 @@ void DropDown::render(wxDC &dc)
         rcContent.Deflate(0, offset.y);
     }
 
-    // draw position bar
-    if (rowSize.y * count > size.y) {
-        int    height = rowSize.y * count;
-        wxRect rect = {size.x - 6, -offset.y * size.y / height, 4,
-                       size.y * size.y / height};
+    // draw position bar (скроллбар)
+    size_t vc = visibleCount();
+    if (rowSize.y * vc > (size_t) avail_h) {
+        int    height = rowSize.y * vc;
+        wxRect rect = {size.x - 6,
+                       search_h + (-offset.y * avail_h / height), 4,
+                       avail_h * avail_h / height};
         dc.SetPen(wxPen(border_color.defaultColor()));
         dc.SetBrush(wxBrush(*wxLIGHT_GREY));
         dc.DrawRoundedRectangle(rect, 2);
@@ -324,60 +467,39 @@ void DropDown::render(wxDC &dc)
             wxPoint pt = rcContent.GetLeftTop();
             pt.y += (rcContent.height - szBmp.y) / 2;
             pt.y += rowSize.y * selected_item;
-            if (pt.y + szBmp.y > 0 && pt.y < size.y)
+            if (pt.y + szBmp.y > search_h && pt.y < size.y)
                 dc.DrawBitmap(check_bitmap.bmp(), pt);
         }
         rcContent.x += szBmp.x + 5;
         rcContent.width -= szBmp.x + 5;
     }
 
-    std::set<wxString> groups;
-    // draw texts & icons
-    int index = 0;
-    for (int i = 0; i < items.size(); ++i) {
-        auto &item = items[i];
-        int states2 = states;
+    // true когда поиск активен — в этом режиме меняем отображение группируемых элементов
+    const bool in_search = m_enable_search && !m_search_text.IsEmpty();
+
+    // Вспомогательная лямбда для отрисовки одного элемента
+    auto drawItem = [&](int i, int index) {
+        auto &item   = items[i];
+        int states2  = states;
         if ((item.style & DD_ITEM_STYLE_DISABLED) != 0)
             states2 &= ~StateColor::Enabled;
-        // Skip by group
-        if (group.IsEmpty()) {
-            if (!item.group.IsEmpty()) {
-                if (groups.find(item.group) != groups.end())
-                    continue;
-                groups.insert(item.group);
-                if (!item.group.IsEmpty()) {
-                    bool disabled = true;
-                    for (int j = i + 1; j < items.size(); ++j) {
-                        if (items[i].group != item.group && (items[j].style & DD_ITEM_STYLE_DISABLED) == 0) {
-                            disabled = false;
-                            break;
-                        }
-                    }
-                    if (!disabled)
-                        states2 |= StateColor::Enabled;
-                }
-            }
-        } else {
-            if (item.group != group)
-                continue;
-        }
         bool is_hover = index == hover_item;
-        ++index;
-        if (rcContent.GetBottom() < 0) {
+
+        if (rcContent.GetBottom() < search_h) {
             rcContent.y += rowSize.y;
-            continue;
+            return;
         }
-        if (rcContent.y > size.y) break;
-        wxPoint pt   = rcContent.GetLeftTop();
+        if (rcContent.y > size.y) return;
+        wxPoint pt = rcContent.GetLeftTop();
 
         if (item.style & DD_ITEM_STYLE_SPLIT_ITEM) {
             _DrawSplitItem(this, dc, item.text, pt, rowSize.GetWidth(), rowSize.GetHeight());
             rcContent.y += rowSize.GetHeight();
-            continue;
+            return;
         }
 
-        auto &  icon  = item.icon;
-        auto size2 = GetBmpSize(icon);
+        auto &icon  = item.icon;
+        auto  size2 = GetBmpSize(icon);
         if (iconSize.x > 0) {
             if (icon.IsOk()) {
                 pt.y += (rcContent.height - size2.y) / 2;
@@ -391,9 +513,15 @@ void DropDown::render(wxDC &dc)
             pt.x += size2.x + 5;
             pt.y = rcContent.y;
         }
-        auto text = group.IsEmpty()
-                        ? (item.group.IsEmpty() ? item.text : item.group)
-                        : (item.text.StartsWith(group) && !group.EndsWith(' ') ? item.text.substr(group.size()).Trim(false) : item.text);
+        // В режиме поиска всегда показываем item.text (полное имя) вместо item.group (имя группы).
+        // Это позволяет видеть конкретный пресет, а не название категории, и делает его кликабельным.
+        auto text = in_search
+                        ? item.text
+                        : (group.IsEmpty()
+                               ? (item.group.IsEmpty() ? item.text : item.group)
+                               : (item.text.StartsWith(group) && !group.EndsWith(' ')
+                                      ? item.text.substr(group.size()).Trim(false)
+                                      : item.text));
         if (!text_off && !text.IsEmpty()) {
             wxSize tSize = dc.GetMultiLineTextExtent(text);
             if (pt.x + tSize.x > rcContent.GetRight()) {
@@ -406,7 +534,8 @@ void DropDown::render(wxDC &dc)
             dc.SetFont(GetFont());
             dc.SetTextForeground(text_color.colorForStates(states2));
             dc.DrawText(text, pt);
-            if (group.IsEmpty() && !item.group.IsEmpty()) {
+            // Стрелку (→) рисуем только в обычном режиме — в поиске пресеты кликабельны напрямую
+            if (!in_search && group.IsEmpty() && !item.group.IsEmpty()) {
                 auto szBmp = arrow_bitmap.GetBmpSize();
                 pt.x = rcContent.GetRight() - szBmp.x - 5;
                 pt.y = rcContent.y + (rcContent.height - szBmp.y) / 2;
@@ -414,6 +543,48 @@ void DropDown::render(wxDC &dc)
             }
         }
         rcContent.y += rowSize.y;
+    };
+
+    // draw texts & icons
+    if (m_enable_search && !m_search_text.IsEmpty()) {
+        // Поиск активен — рисуем только отфильтрованные элементы (плоский список без заголовков)
+        for (int fi = 0; fi < (int) m_filtered_indices.size(); fi++) {
+            drawItem(m_filtered_indices[fi], fi);
+        }
+    } else {
+        // Обычный режим — отрисовка с группами (исходное поведение)
+        std::set<wxString> groups;
+        int index = 0;
+        for (int i = 0; i < (int) items.size(); ++i) {
+            auto &item = items[i];
+            int states2 = states;
+            if ((item.style & DD_ITEM_STYLE_DISABLED) != 0)
+                states2 &= ~StateColor::Enabled;
+            // Skip by group
+            if (group.IsEmpty()) {
+                if (!item.group.IsEmpty()) {
+                    if (groups.find(item.group) != groups.end())
+                        continue;
+                    groups.insert(item.group);
+                    if (!item.group.IsEmpty()) {
+                        bool disabled = true;
+                        for (int j = i + 1; j < (int) items.size(); ++j) {
+                            if (items[i].group != item.group && (items[j].style & DD_ITEM_STYLE_DISABLED) == 0) {
+                                disabled = false;
+                                break;
+                            }
+                        }
+                        if (!disabled)
+                            states2 |= StateColor::Enabled;
+                    }
+                }
+            } else {
+                if (item.group != group)
+                    continue;
+            }
+            drawItem(i, index);
+            ++index;
+        }
     }
 }
 
@@ -421,11 +592,19 @@ int DropDown::hoverIndex()
 {
     if (hover_item < 0)
         return -1;
+
+    // Когда поиск активен — переводим display-индекс в индекс items[] через m_filtered_indices
+    if (m_enable_search && !m_search_text.IsEmpty()) {
+        if (hover_item < (int) m_filtered_indices.size())
+            return m_filtered_indices[hover_item];
+        return -1;
+    }
+
     if (count == items.size())
         return hover_item;
     int index = -1;
     std::set<wxString> groups;
-    for (int i = 0; i < items.size(); ++i) {
+    for (int i = 0; i < (int) items.size(); ++i) {
         auto &item = items[i];
         // Skip by group
         if (group.IsEmpty()) {
@@ -449,6 +628,16 @@ int DropDown::selectedItem()
 {
     if (selection < 0)
         return -1;
+
+    // Когда поиск активен — ищем выбранный элемент в отфильтрованном списке
+    if (m_enable_search && !m_search_text.IsEmpty()) {
+        for (int fi = 0; fi < (int) m_filtered_indices.size(); fi++) {
+            if (m_filtered_indices[fi] == selection)
+                return fi;
+        }
+        return -1; // выбранный элемент не попал в фильтр
+    }
+
     if (count == items.size())
         return selection;
     auto & sel = items[selection];
@@ -458,7 +647,7 @@ int DropDown::selectedItem()
         return 0;
     int                index = 0;
     std::set<wxString> groups;
-    for (size_t i = 0; i < selection; ++i) {
+    for (size_t i = 0; i < (size_t) selection; ++i) {
         auto &item = items[i];
         // Skip by group
         if (group.IsEmpty()) {
@@ -483,6 +672,9 @@ void DropDown::messureSize()
     textSize = wxSize();
     iconSize = wxSize();
     count = 0;
+
+    // Когда поиск активен — считаем размер по всем элементам (для правильного rowSize),
+    // count будет переопределён в конце по отфильтрованному списку
     wxClientDC dc(GetParent() ? GetParent() : this);
     dc.SetFont(GetFont());
     std::set<wxString> groups;
@@ -546,8 +738,16 @@ void DropDown::messureSize()
             szContent = rowSize;
         }
     }
-    szContent.y *= std::min((size_t) 15, std::max(count, (size_t) 1));
-    szContent.y += items.size() > 15 ? rowSize.y / 2 : 0;
+
+    // При активном поиске используем количество отфильтрованных элементов
+    size_t vc = visibleCount();
+    szContent.y *= std::min((size_t) 15, std::max(vc, (size_t) 1));
+    szContent.y += vc > 15 ? rowSize.y / 2 : 0;
+
+    // Добавляем высоту строки поиска поверх списка
+    int search_h = m_enable_search ? FromDIP(SEARCH_BOX_HEIGHT) : 0;
+    szContent.y += search_h;
+
     wxWindow::SetSize(szContent);
 #ifdef __WXGTK__
     // Gtk has a wrapper window for popup widget
@@ -588,13 +788,17 @@ void DropDown::autoPosition()
         off.x = 0;
         off.y += 12;
     }
+    int search_h = m_enable_search ? FromDIP(SEARCH_BOX_HEIGHT) : 0;
+    size_t vc = visibleCount();
+
     wxPoint old = GetPosition();
     wxSize size = GetSize();
     Position(pos, off);
     if (old != GetPosition()) {
         size = rowSize;
-        size.y *= std::min((size_t) 15, count);
-        size.y += count > 15 ? rowSize.y / 2 : 0;
+        size.y *= std::min((size_t) 15, vc);
+        size.y += vc > 15 ? rowSize.y / 2 : 0;
+        size.y += search_h;
         if (size != GetSize()) {
             wxWindow::SetSize(size);
             offset = wxPoint();
@@ -602,15 +806,16 @@ void DropDown::autoPosition()
         }
     }
     if (GetPosition().y > pos.y) {
-        // may exceed
+        // Попап может выйти за нижний край экрана — подрезаем высоту
         auto drect = wxDisplay(GetParent()).GetGeometry();
         if (GetPosition().y + size.y + 10 > drect.GetBottom()) {
-            if (use_content_width && count <= 15) size.x += 6;
+            if (use_content_width && vc <= 15) size.x += 6;
             size.y = drect.GetBottom() - GetPosition().y - 10;
             wxWindow::SetSize(size);
+            int avail = size.y - search_h;
             if (selection >= 0) {
-                if (offset.y + rowSize.y * (selection + 1) > size.y)
-                    offset.y = size.y - rowSize.y * (selection + 1);
+                if (offset.y + rowSize.y * (selection + 1) > avail)
+                    offset.y = avail - rowSize.y * (selection + 1);
                 else if (offset.y + rowSize.y * selection < 0)
                     offset.y = -rowSize.y * selection;
             }
@@ -639,7 +844,9 @@ void DropDown::mouseReleased(wxMouseEvent& event)
             ReleaseMouse();
         if (hover_item < 0)
             return;
-        if (hover_item >= 0 && (subDropDown == nullptr || subDropDown->group.empty())) { // not moved
+        // В режиме поиска группируемые элементы выбираются напрямую (без субпопапа)
+        const bool in_search_now = m_enable_search && !m_search_text.IsEmpty();
+        if (hover_item >= 0 && (in_search_now || subDropDown == nullptr || subDropDown->group.empty())) { // not moved
             sendDropDownEvent();
             if (mainDropDown)
                 mainDropDown->hover_item = -1; // To Dismiss mainDropDown
@@ -670,14 +877,18 @@ void DropDown::mouseMove(wxMouseEvent &event)
         }
     }
 #endif
+    int search_h = m_enable_search ? FromDIP(SEARCH_BOX_HEIGHT) : 0;
+    size_t vc    = visibleCount();
+
     if (pressedDown) {
         wxPoint pt2 = offset + pt - dragStart;
         wxSize  size = GetSize();
+        int avail = size.y - search_h;
         dragStart    = pt;
         if (pt2.y > 0)
             pt2.y = 0;
-        else if (pt2.y + rowSize.y * int(count) < size.y)
-            pt2.y = size.y - rowSize.y * int(count);
+        else if (pt2.y + rowSize.y * int(vc) < avail)
+            pt2.y = avail - rowSize.y * int(vc);
         if (pt2.y != offset.y) {
             offset = pt2;
             hover_item = -1; // moved
@@ -686,8 +897,11 @@ void DropDown::mouseMove(wxMouseEvent &event)
         }
     }
     if (!pressedDown || hover_item >= 0) {
-        int hover = (pt.y - offset.y) / rowSize.y;
-        if (hover >= (int) count) hover = -1;
+        // Вычитаем высоту строки поиска; клик над ней (search area) не выделяет элементы
+        int hover = -1;
+        if (pt.y >= search_h)
+            hover = (pt.y - offset.y - search_h) / rowSize.y;
+        if (hover >= (int) vc) hover = -1;
         if (hover == hover_item) return;
         hover_item = hover;
         int index  = hoverIndex();
@@ -714,20 +928,26 @@ void DropDown::mouseMove(wxMouseEvent &event)
 
 void DropDown::mouseWheelMoved(wxMouseEvent &event)
 {
-    auto delta = event.GetWheelRotation();
-    wxSize  size  = GetSize();
-    wxPoint pt2   = offset + wxPoint{0, delta};
+    auto   delta    = event.GetWheelRotation();
+    wxSize size     = GetSize();
+    int    search_h = m_enable_search ? FromDIP(SEARCH_BOX_HEIGHT) : 0;
+    int    avail    = size.y - search_h;
+    size_t vc       = visibleCount();
+
+    wxPoint pt2 = offset + wxPoint{0, delta};
     if (pt2.y > 0)
         pt2.y = 0;
-    else if (pt2.y + rowSize.y * int(count) < size.y)
-        pt2.y = size.y - rowSize.y * int(count);
+    else if (pt2.y + rowSize.y * int(vc) < avail)
+        pt2.y = avail - rowSize.y * int(vc);
     if (pt2.y != offset.y) {
         offset = pt2;
     } else {
         return;
     }
-    int hover = (event.GetPosition().y - offset.y) / rowSize.y;
-    if (hover >= (int) count) hover = -1;
+    int hover = -1;
+    if (event.GetPosition().y >= search_h)
+        hover = (event.GetPosition().y - offset.y - search_h) / rowSize.y;
+    if (hover >= (int) vc) hover = -1;
     if (hover != hover_item) {
         hover_item = hover;
         if (auto index = hoverIndex(); index >= 0)
@@ -773,6 +993,8 @@ void DropDown::OnDismiss()
     }
     if (subDropDown && subDropDown->IsShown())
         return;
+    // Сбрасываем поисковый запрос при закрытии попапа
+    ClearSearch();
     dismissTime = boost::posix_time::microsec_clock::universal_time();
     hover_item  = -1;
     wxCommandEvent e(EVT_DISMISS);

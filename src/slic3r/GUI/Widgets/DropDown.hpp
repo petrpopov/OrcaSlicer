@@ -67,6 +67,16 @@ private:
     wxPoint                  offset; // x not used
     wxPoint                  dragStart;
 
+    // Поиск/фильтрация: нет дочернего виджета, всё рисуется через wxDC
+    bool             m_enable_search   = false;
+    wxString         m_search_text;
+    std::vector<int> m_filtered_indices; // display_row -> items[] index при активном поиске
+    static constexpr int SEARCH_BOX_HEIGHT = 36; // высота строки поиска в DIP
+
+    // Мигающий курсор в строке поиска
+    bool             m_cursor_visible  = true;
+    wxTimer          m_cursor_timer;
+
 public:
     DropDown(std::vector<Item> &items);
 
@@ -104,6 +114,25 @@ public:
 
     bool HasDismissLongTime();
 
+    // Включает строку поиска в верхней части выпадающего списка (без дочернего виджета)
+    void SetEnableSearch(bool enable);
+    // Сбрасывает поисковый запрос и возвращает полный список
+    void ClearSearch();
+
+    // Возвращает true если поиск включён
+    bool IsSearchEnabled() const { return m_enable_search; }
+
+    // Добавить символ к поисковому запросу (вызывается из ComboBox::keyDown)
+    void appendSearchChar(wxChar ch);
+    // Удалить последний символ поискового запроса (Backspace)
+    void deleteSearchChar();
+    // Переместить выделение в отфильтрованном списке (delta = +1 вниз, -1 вверх)
+    void moveHoverForSearch(int delta);
+    // Выбрать выделенный элемент при поиске (Enter). Возвращает false если список пуст
+    bool selectHoveredItemForSearch();
+    // Количество видимых элементов (с учётом фильтра)
+    size_t visibleCount() const;
+
 protected:
     void Dismiss() override;
 
@@ -132,6 +161,8 @@ private:
 
     void sendDropDownEvent();
 
+    // Перестраивает m_filtered_indices по текущему m_search_text
+    void updateFilter();
 
     DECLARE_EVENT_TABLE()
 };

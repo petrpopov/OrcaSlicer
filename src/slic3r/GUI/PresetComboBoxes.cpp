@@ -799,6 +799,10 @@ PlaterPresetComboBox::PlaterPresetComboBox(wxWindow *parent, Preset::Type preset
 {
     GetDropDown().SetUseContentWidth(true,true);
 
+    // Включаем строку поиска только для выбора филамента
+    if (preset_type == Preset::TYPE_FILAMENT)
+        GetDropDown().SetEnableSearch(true);
+
     if (m_type == Preset::TYPE_FILAMENT)
     {
         // BBS: not show color picker
