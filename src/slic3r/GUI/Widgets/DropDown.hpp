@@ -3,6 +3,7 @@
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <wx/stattext.h>
+#include <wx/textctrl.h>
 #include "../wxExtensions.hpp"
 #include "StateHandler.hpp"
 #include "PopupWindow.hpp"
@@ -67,6 +68,13 @@ private:
     wxPoint                  offset; // x not used
     wxPoint                  dragStart;
 
+    // Поиск/фильтрация элементов списка
+    bool              m_enable_search   = false;
+    wxTextCtrl *      m_search_ctrl     = nullptr;
+    wxString          m_search_text;
+    std::vector<int>  m_filtered_indices; // display_row -> items[] index при активном поиске
+    static constexpr int SEARCH_BOX_HEIGHT = 36; // высота строки поиска в DIP
+
 public:
     DropDown(std::vector<Item> &items);
 
@@ -104,6 +112,11 @@ public:
 
     bool HasDismissLongTime();
 
+    // Включает строку поиска в верхней части выпадающего списка
+    void SetEnableSearch(bool enable);
+    // Сбрасывает поисковый запрос и возвращает полный список
+    void ClearSearch();
+
 protected:
     void Dismiss() override;
 
@@ -132,6 +145,12 @@ private:
 
     void sendDropDownEvent();
 
+    // Перестраивает m_filtered_indices по текущему m_search_text
+    void updateFilter();
+    // Пересчитывает позицию и размер строки поиска после изменения размера попапа
+    void repositionSearchCtrl();
+    // Возвращает количество видимых элементов (с учётом фильтра)
+    size_t visibleCount() const;
 
     DECLARE_EVENT_TABLE()
 };
