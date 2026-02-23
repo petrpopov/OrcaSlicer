@@ -183,11 +183,8 @@ protected:
 
     int m_pa_cali_select_id = 0;
 
-#ifdef __APPLE__
-    wxComboBox *m_comboBox_filament;
-#else
+    // Use custom ComboBox with search support on all platforms
     ComboBox *m_comboBox_filament;
-#endif
     ComboBox * m_comboBox_cali_result;
     TextInput*       m_readonly_filament;
 
