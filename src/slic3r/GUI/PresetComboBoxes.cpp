@@ -1254,6 +1254,8 @@ void PlaterPresetComboBox::update()
     //    add_connected_printers("", true);
     bool selected_in_ams = false;
     if (m_type == Preset::TYPE_FILAMENT) {
+        if (m_preset_bundle->is_bbl_vendor() && m_preset_bundle->filament_ams_list.empty())
+            wxGetApp().sidebar().schedule_bambu_ams_prefetch();
         set_replace_text("Bambu", "BambuStudioBlack");
         selected_in_ams = add_ams_filaments(into_u8(selected_user_preset.empty() ? selected_system_preset : selected_user_preset), true);
     }
@@ -1649,6 +1651,9 @@ void TabPresetComboBox::update()
         //if (i + 1 == m_collection->num_default_presets())
         //    set_label_marker(Append(separator(L("System presets")), wxNullBitmap));
     }
+
+    if (m_type == Preset::TYPE_FILAMENT && m_preset_bundle->is_bbl_vendor() && m_preset_bundle->filament_ams_list.empty())
+        wxGetApp().sidebar().schedule_bambu_ams_prefetch();
 
     if (m_type == Preset::TYPE_FILAMENT && m_preset_bundle->is_bbl_vendor())
         add_ams_filaments(into_u8(selected));

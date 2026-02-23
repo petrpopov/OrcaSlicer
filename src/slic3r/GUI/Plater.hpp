@@ -190,6 +190,7 @@ public:
     // BBS
     void on_bed_type_change(BedType bed_type);
     void load_ams_list(MachineObject* obj);
+    void schedule_bambu_ams_prefetch();
     std::map<int, DynamicPrintConfig> build_filament_ams_list(MachineObject* obj);
     void sync_ams_list(bool is_from_big_sync_btn = false);
     bool sync_extruder_list();
@@ -269,6 +270,8 @@ private:
 
     wxBoxSizer* m_scrolled_sizer = nullptr;
     bool            m_need_auto_sync_after_connect_printer{false};
+    bool            m_bambu_ams_prefetch_pending{false};
+    bool            m_bambu_ams_prefetch_completed{false};
 };
 
 class Plater: public wxPanel
