@@ -10,6 +10,7 @@ EVT_LEFT_DOWN(ComboBox::mouseDown)
 EVT_LEFT_DCLICK(ComboBox::mouseDown)
 //EVT_MOUSEWHEEL(ComboBox::mouseWheelMoved)
 EVT_KEY_DOWN(ComboBox::keyDown)
+EVT_CHAR(ComboBox::onChar)
 
 // catch paint events
 END_EVENT_TABLE()
@@ -422,20 +423,7 @@ void ComboBox::keyDown(wxKeyEvent& event)
             HandleAsNavigationKey(event);
             break;
         default:
-            if (search_open) {
-                // GetUnicodeKey() в EVT_KEY_DOWN на macOS даёт символ по текущей раскладке
-                // (включая кириллицу и другие языки).
-                // Проверяем: WXK_NONE, управляющие символы < 32, Control/Meta модификаторы.
-                wxChar ch = event.GetUnicodeKey();
-                if (ch != WXK_NONE && (unsigned int) ch >= 32u
-                        && !event.ControlDown() && !event.MetaDown()) {
-                    // Нормализуем регистр: если Shift не нажат, приводим к нижнему
-                    if (!event.ShiftDown())
-                        ch = (wxChar) wxTolower((wchar_t) ch);
-                    drop.appendSearchChar(ch);
-                    return; // символ обработан
-                }
-            }
+            // Печатные символы обрабатываются в onChar (EVT_CHAR) после раскладки
             event.Skip();
             break;
     }
@@ -445,6 +433,28 @@ void ComboBox::onMove(wxMoveEvent &event)
 {
     event.Skip();
     drop.Hide();
+}
+
+void ComboBox::onChar(wxKeyEvent &event)
+{
+    // EVT_CHAR генерируется ПОСЛЕ обработки системой раскладки клавиатуры
+    // и возвращает правильный Unicode-символ для любой раскладки (кириллица, etc.)
+    const bool search_open = drop_down && drop.IsSearchEnabled();
+    
+    if (search_open) {
+        wxChar ch = event.GetUnicodeKey();
+        // Проверяем: WXK_NONE, управляющие символы < 32, Control/Meta модификаторы
+        if (ch != WXK_NONE && (unsigned int) ch >= 32u
+                && !event.ControlDown() && !event.MetaDown()) {
+            // Нормализуем регистр: если Shift не нажат, приводим к нижнему
+            if (!event.ShiftDown())
+                ch = (wxChar) wxTolower((wchar_t) ch);
+            drop.appendSearchChar(ch);
+            return; // символ обработан — event.Skip() не вызываем
+        }
+    }
+    // Для остальных случаев или если поиск не активен — передаём дальше
+    event.Skip();
 }
 
 void ComboBox::OnEdit()

@@ -102,6 +102,7 @@ private:
     void mouseDown(wxMouseEvent &event);
     void mouseWheelMoved(wxMouseEvent &event);
     void keyDown(wxKeyEvent &event);
+    void onChar(wxKeyEvent &event); // обработка печатных символов (EVT_CHAR, после раскладки)
     void onMove(wxMoveEvent &event);
 
     DECLARE_EVENT_TABLE()
