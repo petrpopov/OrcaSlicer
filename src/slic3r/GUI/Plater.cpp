@@ -2229,6 +2229,10 @@ Sidebar::Sidebar(Plater *parent)
     auto *sizer = new wxBoxSizer(wxVERTICAL);
     sizer->Add(p->scrolled, 1, wxEXPAND);
     SetSizer(sizer);
+
+    // Bambu-only: schedule asynchronous AMS prefetch once UI is up, so AMS trays
+    // are available in filament dropdown without first opening Device page.
+    schedule_bambu_ams_prefetch();
 }
 
 Sidebar::~Sidebar() {}
@@ -3386,6 +3390,48 @@ void Sidebar::load_ams_list(MachineObject* obj)
     }
 
     p->combo_printer->update();
+}
+
+void Sidebar::schedule_bambu_ams_prefetch()
+{
+    if (m_bambu_ams_prefetch_pending || m_bambu_ams_prefetch_completed)
+        return;
+
+    auto *preset_bundle = wxGetApp().preset_bundle;
+    if (!preset_bundle || !preset_bundle->is_bbl_vendor())
+        return;
+
+    if (!preset_bundle->filament_ams_list.empty()) {
+        m_bambu_ams_prefetch_completed = true;
+        return;
+    }
+
+    m_bambu_ams_prefetch_pending = true;
+    wxGetApp().CallAfter([this]() {
+        m_bambu_ams_prefetch_pending = false;
+
+        auto *pb = wxGetApp().preset_bundle;
+        if (!pb || !pb->is_bbl_vendor() || !pb->filament_ams_list.empty()) {
+            m_bambu_ams_prefetch_completed = !pb || !pb->filament_ams_list.empty();
+            return;
+        }
+
+        DeviceManager *dev = wxGetApp().getDeviceManager();
+        if (!dev)
+            return;
+
+        MachineObject *obj = dev->get_selected_machine();
+        if (!obj) {
+            // This only selects from already known machines; no modal UI.
+            dev->load_last_machine();
+            obj = dev->get_selected_machine();
+        }
+        if (!obj)
+            return;
+
+        load_ams_list(obj);
+        m_bambu_ams_prefetch_completed = !wxGetApp().preset_bundle->filament_ams_list.empty();
+    });
 }
 
 void Sidebar::sync_ams_list(bool is_from_big_sync_btn)
