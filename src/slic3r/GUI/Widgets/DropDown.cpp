@@ -842,7 +842,7 @@ void DropDown::mouseMove(wxMouseEvent &event)
         }
     }
 #endif
-    int search_h = (m_enable_search && m_search_ctrl) ? FromDIP(SEARCH_BOX_HEIGHT) : 0;
+    int search_h = m_enable_search ? FromDIP(SEARCH_BOX_HEIGHT) : 0;
     size_t vc    = visibleCount();
 
     if (pressedDown) {
@@ -895,7 +895,7 @@ void DropDown::mouseWheelMoved(wxMouseEvent &event)
 {
     auto   delta    = event.GetWheelRotation();
     wxSize size     = GetSize();
-    int    search_h = (m_enable_search && m_search_ctrl) ? FromDIP(SEARCH_BOX_HEIGHT) : 0;
+    int    search_h = m_enable_search ? FromDIP(SEARCH_BOX_HEIGHT) : 0;
     int    avail    = size.y - search_h;
     size_t vc       = visibleCount();
 
