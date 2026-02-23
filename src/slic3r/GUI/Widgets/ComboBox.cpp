@@ -440,7 +440,7 @@ void ComboBox::onChar(wxKeyEvent &event)
     // EVT_CHAR генерируется ПОСЛЕ обработки системой раскладки клавиатуры
     // и возвращает правильный Unicode-символ для любой раскладки (кириллица, etc.)
     const bool search_open = drop_down && drop.IsSearchEnabled();
-    
+
     if (search_open) {
         wxChar ch = event.GetUnicodeKey();
         // Проверяем: WXK_NONE, управляющие символы < 32, Control/Meta модификаторы
@@ -450,10 +450,13 @@ void ComboBox::onChar(wxKeyEvent &event)
             if (!event.ShiftDown())
                 ch = (wxChar) wxTolower((wchar_t) ch);
             drop.appendSearchChar(ch);
-            return; // символ обработан — event.Skip() не вызываем
+            return; // символ обработан — не вызываем event.Skip()
         }
+        // Если символ не прошёл проверку (например, WXK_NONE), всё равно не передаём дальше
+        // чтобы не закрывать попап
+        return;
     }
-    // Для остальных случаев или если поиск не активен — передаём дальше
+    // Для остальных случаев (поиск не активен) — передаём дальше
     event.Skip();
 }
 
