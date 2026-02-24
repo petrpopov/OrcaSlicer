@@ -197,9 +197,8 @@ void DropDown::ClearSearch()
 {
     if (!m_enable_search) return;
     m_search_text.clear();
-    m_filtered_indices.clear();
-    hover_item = -1;
-    offset     = wxPoint();
+    // Пересчитываем фильтр с пустым запросом — это добавит все элементы
+    updateFilter();
 }
 
 void DropDown::appendSearchChar(wxChar ch)
