@@ -197,9 +197,8 @@ void DropDown::ClearSearch()
 {
     if (!m_enable_search) return;
     m_search_text.clear();
-    m_filtered_indices.clear();
-    hover_item = -1;
-    offset     = wxPoint();
+    // Пересчитываем фильтр с пустым запросом — это добавит все элементы
+    updateFilter();
 }
 
 void DropDown::appendSearchChar(wxChar ch)
@@ -774,6 +773,8 @@ void DropDown::messureSize()
 
 void DropDown::autoPosition()
 {
+    // Сбрасываем поисковый запрос при каждом открытии попапа
+    ClearSearch();
     messureSize();
     wxPoint pos;
     wxSize  off;
@@ -1016,8 +1017,6 @@ void DropDown::OnDismiss()
     }
     if (subDropDown && subDropDown->IsShown())
         return;
-    // Сбрасываем поисковый запрос при закрытии попапа
-    ClearSearch();
     dismissTime = boost::posix_time::microsec_clock::universal_time();
     hover_item  = -1;
     wxCommandEvent e(EVT_DISMISS);
