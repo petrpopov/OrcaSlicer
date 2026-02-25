@@ -122,6 +122,8 @@ echo
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_BUILD_DIR="$PROJECT_DIR/build/$ARCH"
 DEPS_DIR="$PROJECT_DIR/deps"
+APP_BUNDLE_NAME="OrcaSlicerPE"
+APP_BINARY_NAME="OrcaSlicerPE"
 
 # For Multi-config generators like Ninja and Xcode
 export BUILD_DIR_CONFIG_SUBDIR="/$BUILD_CONFIG"
@@ -214,15 +216,15 @@ function build_slicer() {
             mkdir -p OrcaSlicer
             cd OrcaSlicer
             # remove previously built app
-            rm -rf ./OrcaSlicer.app
+            rm -rf "./${APP_BUNDLE_NAME}.app"
             # fully copy newly built app
-            cp -pR "../src$BUILD_DIR_CONFIG_SUBDIR/OrcaSlicer.app" ./OrcaSlicer.app
+            cp -pR "../src$BUILD_DIR_CONFIG_SUBDIR/${APP_BUNDLE_NAME}.app" "./${APP_BUNDLE_NAME}.app"
             # fix resources
-            resources_path=$(readlink ./OrcaSlicer.app/Contents/Resources)
-            rm ./OrcaSlicer.app/Contents/Resources
-            cp -R "$resources_path" ./OrcaSlicer.app/Contents/Resources
+            resources_path=$(readlink "./${APP_BUNDLE_NAME}.app/Contents/Resources")
+            rm "./${APP_BUNDLE_NAME}.app/Contents/Resources"
+            cp -R "$resources_path" "./${APP_BUNDLE_NAME}.app/Contents/Resources"
             # delete .DS_Store file
-            find ./OrcaSlicer.app/ -name '.DS_Store' -delete
+            find "./${APP_BUNDLE_NAME}.app/" -name '.DS_Store' -delete
             
             # Copy OrcaSlicer_profile_validator.app if it exists
             if [ -f "../src$BUILD_DIR_CONFIG_SUBDIR/OrcaSlicer_profile_validator.app/Contents/MacOS/OrcaSlicer_profile_validator" ]; then
@@ -258,17 +260,17 @@ function build_universal() {
     echo "Creating universal binary..."
     # PROJECT_BUILD_DIR="$PROJECT_DIR/build_Universal"
     mkdir -p "$PROJECT_BUILD_DIR/OrcaSlicer"
-    UNIVERSAL_APP="$PROJECT_BUILD_DIR/OrcaSlicer/OrcaSlicer.app"
+    UNIVERSAL_APP="$PROJECT_BUILD_DIR/OrcaSlicer/${APP_BUNDLE_NAME}.app"
     rm -rf "$UNIVERSAL_APP"
-    cp -R "$PROJECT_DIR/build/arm64/OrcaSlicer/OrcaSlicer.app" "$UNIVERSAL_APP"
+    cp -R "$PROJECT_DIR/build/arm64/OrcaSlicer/${APP_BUNDLE_NAME}.app" "$UNIVERSAL_APP"
     
     # Get the binary path inside the .app bundle
-    BINARY_PATH="Contents/MacOS/OrcaSlicer"
+    BINARY_PATH="Contents/MacOS/${APP_BINARY_NAME}"
     
     # Create universal binary using lipo
     lipo -create \
-        "$PROJECT_DIR/build/x86_64/OrcaSlicer/OrcaSlicer.app/$BINARY_PATH" \
-        "$PROJECT_DIR/build/arm64/OrcaSlicer/OrcaSlicer.app/$BINARY_PATH" \
+        "$PROJECT_DIR/build/x86_64/OrcaSlicer/${APP_BUNDLE_NAME}.app/$BINARY_PATH" \
+        "$PROJECT_DIR/build/arm64/OrcaSlicer/${APP_BUNDLE_NAME}.app/$BINARY_PATH" \
         -output "$UNIVERSAL_APP/$BINARY_PATH"
         
     echo "Universal binary created at $UNIVERSAL_APP"
