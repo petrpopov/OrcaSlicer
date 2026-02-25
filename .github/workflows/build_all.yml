@@ -2,9 +2,9 @@ name: Build all
 
 on:
   push:
-    branches:
-     - main
-     - release/*
+    tags:
+     - 'v*'
+     - 'V*'
     paths:
      - 'deps/**'
      - 'src/**'
@@ -31,10 +31,6 @@ on:
      - 'build_release_macos.sh'
      - 'scripts/flatpak/**'
 
-
-  schedule:
-      - cron: '0 17 * * *' # run once a day at 1 AM Singapore time (UTC+8)
-
   workflow_dispatch: # allows for manual dispatch
     inputs:
       build-deps-only:
@@ -51,8 +47,7 @@ jobs:
   build_linux:
     strategy:
       fail-fast: false
-    # Don't run scheduled builds on forks:
-    if: ${{ !cancelled() && (github.event_name != 'schedule' || github.repository == 'OrcaSlicer/OrcaSlicer') }}
+    if: ${{ !cancelled() }}
     uses: ./.github/workflows/build_check_cache.yml
     with:
       os: ubuntu-24.04
@@ -66,14 +61,13 @@ jobs:
           - os: windows-latest
           - os: ${{ vars.SELF_HOSTED && 'orca-macos-arm64' || 'macos-14' }}
             arch: arm64
-    # Don't run scheduled builds on forks:
-    if: ${{ !cancelled() && (github.event_name != 'schedule' || github.repository == 'OrcaSlicer/OrcaSlicer') }}
+    if: ${{ !cancelled() }}
     uses: ./.github/workflows/build_check_cache.yml
     with:
       os: ${{ matrix.os }}
       arch: ${{ matrix.arch }}
       build-deps-only: ${{ inputs.build-deps-only || false }}
-      force-build: ${{ github.event_name == 'schedule' }}
+      force-build: false
     secrets: inherit
   unit_tests:
     name: Unit Tests
