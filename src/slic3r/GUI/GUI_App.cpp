@@ -382,6 +382,19 @@ public:
         wxBitmap logo_bmp = *bmp_cache.load_svg(is_dark ? "splash_logo_dark" : "splash_logo", width, height);  // use with full width & height
         memDc.DrawBitmap(logo_bmp, 0, 0, true);
 
+        // Fork subtitle
+        wxFont splash_subtitle_font = m_constant_text.based_on_font;
+        splash_subtitle_font.SetWeight(wxFONTWEIGHT_MEDIUM);
+        memDc.SetFont(splash_subtitle_font);
+        memDc.SetTextForeground(StateColor::darkModeColorFor(wxColor(148, 148, 148)));
+        const wxString splash_subtitle = "Peter's Edition";
+        wxSize subtitle_ext = memDc.GetTextExtent(splash_subtitle);
+        wxRect subtitle_rect(
+            wxPoint(0, int(height * 0.66)),
+            wxPoint(width, int(height * 0.66) + subtitle_ext.GetHeight())
+        );
+        memDc.DrawLabel(splash_subtitle, subtitle_rect, wxALIGN_CENTER);
+
         // Version
         memDc.SetFont(m_constant_text.version_font);
         memDc.SetTextForeground(StateColor::darkModeColorFor(wxColor(134, 134, 134)));
