@@ -14,6 +14,43 @@
 namespace Slic3r {
 namespace GUI {
 
+namespace {
+
+const wxString ABOUT_SUBTITLE_TEXT = "Peter's Edition";
+
+void add_about_subtitle(wxBitmap &bitmap, wxWindow *owner)
+{
+    if (!bitmap.IsOk() || owner == nullptr) {
+        return;
+    }
+
+    const int width  = bitmap.GetWidth();
+    const int height = bitmap.GetHeight();
+    if (width <= 0 || height <= 0) {
+        return;
+    }
+
+    wxMemoryDC dc;
+    dc.SelectObject(bitmap);
+
+    wxFont subtitle_font = owner->GetFont();
+    subtitle_font.SetWeight(wxFONTWEIGHT_MEDIUM);
+    subtitle_font.SetPointSize(std::max(9, height / 11));
+    dc.SetFont(subtitle_font);
+    dc.SetTextForeground(wxColour(148, 148, 148));
+
+    int text_w = 0;
+    int text_h = 0;
+    dc.GetTextExtent(ABOUT_SUBTITLE_TEXT, &text_w, &text_h);
+    const int text_x = width * 30 / 100;
+    const int text_y = std::min(height - text_h - 8, height * 84 / 100);
+    dc.DrawText(ABOUT_SUBTITLE_TEXT, text_x, text_y);
+
+    dc.SelectObject(wxNullBitmap);
+}
+
+} // namespace
+
 AboutDialogLogo::AboutDialogLogo(wxWindow* parent)
     : wxPanel(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize)
 {
@@ -231,6 +268,7 @@ AboutDialog::AboutDialog()
 
     // logo
     m_logo_bitmap = ScalableBitmap(this, is_dark ? "OrcaSlicer_about_dark" : "OrcaSlicer_about", 125);
+    add_about_subtitle(m_logo_bitmap.bmp(), this);
     m_logo = new wxStaticBitmap(this, wxID_ANY, m_logo_bitmap.bmp(), wxDefaultPosition,wxDefaultSize, 0);
     m_logo->SetSizer(vesizer);
 
@@ -366,6 +404,7 @@ AboutDialog::AboutDialog()
 void AboutDialog::on_dpi_changed(const wxRect &suggested_rect)
 {
     m_logo_bitmap.msw_rescale();
+    add_about_subtitle(m_logo_bitmap.bmp(), this);
     m_logo->SetBitmap(m_logo_bitmap.bmp());
 
     const wxFont& font = GetFont();
