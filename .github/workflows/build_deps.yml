@@ -78,7 +78,7 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: |
             if [ -z "${{ vars.SELF_HOSTED }}" ]; then
-              brew install automake texinfo libtool
+              brew install autoconf automake texinfo libtool
             fi
             ./build_release_macos.sh -dx ${{ !vars.SELF_HOSTED && '-1' || '' }} -a universal -t 10.15
             for arch in arm64 x86_64; do

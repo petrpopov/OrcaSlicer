@@ -91,6 +91,12 @@ jobs:
           path: ${{ github.workspace }}/deps/build
           key: macos-deps-universal-${{ hashFiles('deps/**') }}
 
+      - name: Install build tools (autotools)
+        if: steps.cache_deps.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          brew install autoconf automake texinfo libtool
+
       - name: Build deps
         if: steps.cache_deps.outputs.cache-hit != 'true'
         shell: bash
