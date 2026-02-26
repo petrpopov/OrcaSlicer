@@ -47,7 +47,7 @@ jobs:
   build_linux:
     strategy:
       fail-fast: false
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && !(github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) }}
     uses: ./.github/workflows/build_check_cache.yml
     with:
       os: ubuntu-24.04
@@ -61,7 +61,7 @@ jobs:
           - os: windows-latest
           - os: ${{ vars.SELF_HOSTED && 'orca-macos-arm64' || 'macos-14' }}
             arch: arm64
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && !(github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && matrix.os == 'windows-latest') }}
     uses: ./.github/workflows/build_check_cache.yml
     with:
       os: ${{ matrix.os }}
@@ -73,7 +73,7 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-24.04
     needs: build_linux
-    if: ${{ !cancelled() && success() }}
+    if: ${{ !cancelled() && success() && !(github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -126,8 +126,7 @@ jobs:
             runner: ubuntu-24.04
           - arch: aarch64
             runner: ubuntu-24.04-arm
-    # Don't run scheduled builds on forks:
-    if: ${{ !cancelled() && (github.event_name != 'schedule' || github.repository == 'OrcaSlicer/OrcaSlicer') }}
+    if: ${{ !cancelled() && !(github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) }}
     runs-on: ${{ matrix.variant.runner }}
     env:
       date:
