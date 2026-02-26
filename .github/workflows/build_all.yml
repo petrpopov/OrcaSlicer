@@ -56,16 +56,11 @@ jobs:
   build_all:
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - os: windows-latest
-          - os: ${{ vars.SELF_HOSTED && 'orca-macos-arm64' || 'macos-14' }}
-            arch: arm64
-    if: ${{ !cancelled() && !(github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && matrix.os == 'windows-latest') }}
+    if: ${{ !cancelled() }}
     uses: ./.github/workflows/build_check_cache.yml
     with:
-      os: ${{ matrix.os }}
-      arch: ${{ matrix.arch }}
+      os: ${{ vars.SELF_HOSTED && 'orca-macos-arm64' || 'macos-14' }}
+      arch: arm64
       build-deps-only: ${{ inputs.build-deps-only || false }}
       force-build: false
     secrets: inherit

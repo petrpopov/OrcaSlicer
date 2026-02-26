@@ -42,6 +42,13 @@ jobs:
       APP_BUNDLE_NAME: OrcaSlicerPE
       APP_BINARY_NAME: OrcaSlicerPE
       DEPLOYMENT_TARGET: "10.15"
+      BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+      P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+      KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+      CERTIFICATE_ID: ${{ secrets.MACOS_CERTIFICATE_ID }}
+      APPLE_DEV_ACCOUNT: ${{ secrets.APPLE_DEV_ACCOUNT }}
+      TEAM_ID: ${{ secrets.TEAM_ID }}
+      APP_PWD: ${{ secrets.APP_PWD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -95,14 +102,27 @@ jobs:
         run: |
           ./build_release_macos.sh -s -x -1 -a universal -t "${DEPLOYMENT_TARGET}"
 
-      - name: Sign app bundle
-        if: ${{ (github.event_name == 'push' || inputs.notarize) && secrets.BUILD_CERTIFICATE_BASE64 != '' && secrets.P12_PASSWORD != '' && secrets.KEYCHAIN_PASSWORD != '' && secrets.MACOS_CERTIFICATE_ID != '' }}
+      - name: Resolve signing/notarization availability
+        id: signing_state
         shell: bash
-        env:
-          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
-          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-          CERTIFICATE_ID: ${{ secrets.MACOS_CERTIFICATE_ID }}
+        run: |
+          can_sign=false
+          can_notarize=false
+
+          if [[ -n "${BUILD_CERTIFICATE_BASE64}" && -n "${P12_PASSWORD}" && -n "${KEYCHAIN_PASSWORD}" && -n "${CERTIFICATE_ID}" ]]; then
+            can_sign=true
+          fi
+
+          if [[ -n "${APPLE_DEV_ACCOUNT}" && -n "${TEAM_ID}" && -n "${APP_PWD}" ]]; then
+            can_notarize=true
+          fi
+
+          echo "can_sign=${can_sign}" >> "$GITHUB_OUTPUT"
+          echo "can_notarize=${can_notarize}" >> "$GITHUB_OUTPUT"
+
+      - name: Sign app bundle
+        if: ${{ (github.event_name == 'push' || inputs.notarize) && steps.signing_state.outputs.can_sign == 'true' }}
+        shell: bash
         run: |
           CERTIFICATE_PATH="$RUNNER_TEMP/build_certificate.p12"
           KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
@@ -135,23 +155,21 @@ jobs:
           hdiutil create -volname "${APP_BUNDLE_NAME}" -srcfolder "$DMG_DIR" -ov -format UDZO "${DMG_NAME}"
 
       - name: Sign DMG
-        if: ${{ (github.event_name == 'push' || inputs.notarize) && secrets.BUILD_CERTIFICATE_BASE64 != '' && secrets.P12_PASSWORD != '' && secrets.KEYCHAIN_PASSWORD != '' && secrets.MACOS_CERTIFICATE_ID != '' }}
+        if: ${{ (github.event_name == 'push' || inputs.notarize) && steps.signing_state.outputs.can_sign == 'true' }}
         shell: bash
-        env:
-          CERTIFICATE_ID: ${{ secrets.MACOS_CERTIFICATE_ID }}
         run: |
           codesign --deep --force --verbose --options runtime --timestamp \
             --entitlements "${{ github.workspace }}/scripts/disable_validation.entitlements" \
             --sign "$CERTIFICATE_ID" "${DMG_NAME}"
 
       - name: Notarize DMG
-        if: ${{ (github.event_name == 'push' || inputs.notarize) && secrets.APPLE_DEV_ACCOUNT != '' && secrets.TEAM_ID != '' && secrets.APP_PWD != '' }}
+        if: ${{ (github.event_name == 'push' || inputs.notarize) && steps.signing_state.outputs.can_notarize == 'true' }}
         shell: bash
         run: |
           xcrun notarytool submit "${DMG_NAME}" \
-            --apple-id "${{ secrets.APPLE_DEV_ACCOUNT }}" \
-            --team-id "${{ secrets.TEAM_ID }}" \
-            --password "${{ secrets.APP_PWD }}" \
+            --apple-id "${APPLE_DEV_ACCOUNT}" \
+            --team-id "${TEAM_ID}" \
+            --password "${APP_PWD}" \
             --wait
           xcrun stapler staple "${DMG_NAME}"
 
