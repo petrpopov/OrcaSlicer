@@ -12,7 +12,9 @@
 
 ## Почему этот форк
 
-Коротко: **I don't give a shit** про конфликты команд и политические разборки. Мне нужен рабочий пайплайн: любимый слайсер + любимый принтер. Поэтому этот форк существует.
+Коротко: мне неинтересны конфликты команд и политические разборки. Мне нужен рабочий пайплайн: любимый слайсер + любимый принтер. Поэтому этот форк существует.
+
+Внешний обзор ситуации: [The Verge — Here’s what Bambu will — and won’t — promise after its controversial 3D printer update](https://www.theverge.com/2025/1/21/24349031/bambu-3d-printer-update-authentication-filament-subscription-lock-answers).
 
 ## Что это за проект
 

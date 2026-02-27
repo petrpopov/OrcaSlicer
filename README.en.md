@@ -14,6 +14,8 @@ An OrcaSlicer fork for users who want to keep using their favorite slicer with B
 
 Short version: **I don't give a shit** about team conflicts and politics. I just want a working setup: favorite slicer + favorite printer. So I built this fork.
 
+External coverage of the situation: [The Verge — Here’s what Bambu will — and won’t — promise after its controversial 3D printer update](https://www.theverge.com/2025/1/21/24349031/bambu-3d-printer-update-authentication-filament-subscription-lock-answers).
+
 ## What this project is
 
 This is a fork of [OrcaSlicer](https://github.com/OrcaSlicer/OrcaSlicer) with focused improvements for printing on Bambu Lab via Bambu Connect, plus several UX upgrades.
