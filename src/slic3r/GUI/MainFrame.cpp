@@ -155,7 +155,11 @@ static wxIcon main_frame_icon(GUI_App::EAppMode app_mode)
     }
     return wxIcon(path, wxBITMAP_TYPE_ICO);
 #else // _WIN32
+#ifdef __APPLE__
+    return wxIcon(Slic3r::var("OrcaSlicer.ico"), wxBITMAP_TYPE_ICO);
+#else
     return wxIcon(Slic3r::var("OrcaSlicer_128px.png"), wxBITMAP_TYPE_PNG);
+#endif
 #endif // _WIN32
 }
 
@@ -4085,7 +4089,11 @@ SettingsDialog::SettingsDialog(MainFrame* mainframe)
         SetIcon(wxIcon(szExeFileName, wxBITMAP_TYPE_ICO));
     }
 #else
+#ifdef __APPLE__
+    SetIcon(wxIcon(var("OrcaSlicer.ico"), wxBITMAP_TYPE_ICO));
+#else
     SetIcon(wxIcon(var("OrcaSlicer_128px.png"), wxBITMAP_TYPE_PNG));
+#endif
 #endif // _WIN32
 
     //just hide the Frame on closing
