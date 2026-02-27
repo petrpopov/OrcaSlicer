@@ -4985,6 +4985,10 @@ Plater::priv::priv(Plater *q, MainFrame *main_frame)
         wxString   layout = wxString::FromUTF8(cfg->get("window_layout"));
         if (!layout.empty()) {
             m_aui_mgr.LoadPerspective(layout, false);
+            if (sidebar.IsFloating()) {
+                // Guard against persisted detached sidebar layout; keep default docked layout.
+                m_aui_mgr.LoadPerspective(m_default_window_layout, false);
+            }
             sidebar_layout.is_collapsed = !sidebar.IsShown();
         }
 
