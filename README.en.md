@@ -29,7 +29,7 @@ Important: the core OrcaSlicer functionality was not rewritten or broken; change
 3. Before sending, make sure `Bambu Connect` is already running and can see your current printer.
 4. Prepare your model and click `BBL Connect` in the send/print dialog.
 
-## macOS: install and run unsigned `.dmg` build (EN/RU)
+## macOS: install and run unsigned `.dmg` build
 
 ### EN
 
@@ -42,18 +42,6 @@ xattr -dr com.apple.quarantine "/Applications/OrcaSlicerPE.app"
 ```
 
 4. Launch the app from `/Applications`.
-
-### RU
-
-1. Откройте (смонтируйте) `.dmg`.
-2. Перетащите `OrcaSlicerPE.app` в `/Applications`.
-3. Откройте `Terminal` и выполните:
-
-```bash
-xattr -dr com.apple.quarantine "/Applications/OrcaSlicerPE.app"
-```
-
-4. Запустите приложение из `/Applications`.
 
 ## Main fork features
 
