@@ -26,7 +26,34 @@
    - официальный wiki-гайд: [Bambu Connect](https://wiki.bambulab.com/en/software/bambu-connect)
    - анонс и контекст от Bambu Lab: [Updates and Third-Party Integration with Bambu Connect](https://blog.bambulab.com/updates-and-third-party-integration-with-bambu-connect/)
 2. В OrcaSlicer откройте `Preferences` и включите опцию `Use Bambu Lab Connect`.
-3. Подготовьте модель и нажмите `BBL Connect` в окне отправки на печать.
+3. Перед отправкой убедитесь, что `Bambu Connect` уже запущен и видит ваш текущий принтер.
+4. Подготовьте модель и нажмите `BBL Connect` в окне отправки на печать.
+
+## macOS: установка и запуск неподписанного `.dmg` (RU/EN)
+
+### RU
+
+1. Откройте (смонтируйте) `.dmg`.
+2. Перетащите `OrcaSlicerPE.app` в `/Applications`.
+3. Откройте `Terminal` и выполните:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/OrcaSlicerPE.app"
+```
+
+4. Запустите приложение из `/Applications`.
+
+### EN
+
+1. Open (mount) the `.dmg`.
+2. Drag `OrcaSlicerPE.app` to `/Applications`.
+3. Open `Terminal` and run:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/OrcaSlicerPE.app"
+```
+
+4. Launch the app from `/Applications`.
 
 ## Основные фичи форка
 
