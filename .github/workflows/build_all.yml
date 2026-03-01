@@ -47,10 +47,19 @@ jobs:
   build_linux:
     strategy:
       fail-fast: false
-    if: ${{ !cancelled() && !(github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) }}
+    if: ${{ !cancelled() }}
     uses: ./.github/workflows/build_check_cache.yml
     with:
       os: ubuntu-24.04
+      build-deps-only: ${{ inputs.build-deps-only || false }}
+    secrets: inherit
+  build_windows:
+    strategy:
+      fail-fast: false
+    if: ${{ !cancelled() }}
+    uses: ./.github/workflows/build_check_cache.yml
+    with:
+      os: windows-latest
       build-deps-only: ${{ inputs.build-deps-only || false }}
     secrets: inherit
   build_all:
