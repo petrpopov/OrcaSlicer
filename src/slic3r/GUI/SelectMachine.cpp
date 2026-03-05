@@ -3745,7 +3745,23 @@ std::string SelectMachineDialog::build_bambu_connect_uri(const std::string& file
     if (file_path.empty())
         return {};
 
-    const std::string file_name = boost::filesystem::path(file_path).filename().string();
+    std::string file_name;
+
+    if (m_plater != nullptr) {
+        const wxString project_filename = m_plater->get_project_filename(".3mf");
+        if (!project_filename.empty())
+            file_name = boost::filesystem::path(into_path(project_filename)).filename().string();
+    }
+
+    if (file_name.empty() && !m_current_project_name.IsEmpty()) {
+        file_name = m_current_project_name.utf8_string();
+        if (boost::filesystem::path(file_name).extension().empty())
+            file_name += ".3mf";
+    }
+
+    if (file_name.empty())
+        file_name = boost::filesystem::path(file_path).filename().string();
+
     return std::string("bambu-connect://import-file?path=") + Http::url_encode(file_path) +
            "&name=" + Http::url_encode(file_name) +
            "&version=1.0.0";
