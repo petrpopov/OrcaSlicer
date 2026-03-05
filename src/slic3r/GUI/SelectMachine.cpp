@@ -34,11 +34,20 @@
 #include <wx/mstream.h>
 #include <miniz.h>
 #include <algorithm>
+#include <cctype>
+#include <chrono>
+#include <cstdio>
+#include <thread>
 #include "Plater.hpp"
 #include "Notebook.hpp"
 #include "BitmapCache.hpp"
 #include "BindDialog.hpp"
 #include "slic3r/Utils/Http.hpp"
+
+#ifdef _WIN32
+#include <windows.h>
+#include <tlhelp32.h>
+#endif
 
 namespace Slic3r { namespace GUI {
 
@@ -61,8 +70,78 @@ wxColour accent_wx_color()
     const auto c = ColorRGB::ORCA();
     return wxColour(c.r_uchar(), c.g_uchar(), c.b_uchar());
 }
-} // namespace
 
+std::string to_lower_ascii(std::string value)
+{
+    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return value;
+}
+
+bool is_bambu_connect_process_name(const std::string& process_name)
+{
+    if (process_name.empty())
+        return false;
+
+    const std::string lower_name = to_lower_ascii(process_name);
+    return lower_name.find("bambu connect") != std::string::npos ||
+           lower_name.find("bambu-connect") != std::string::npos ||
+           lower_name.find("bambu_connect") != std::string::npos ||
+           lower_name.find("bambuconnect") != std::string::npos;
+}
+
+bool is_bambu_connect_running()
+{
+#ifdef _WIN32
+    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snapshot == INVALID_HANDLE_VALUE)
+        return false;
+
+    PROCESSENTRY32W process_entry{};
+    process_entry.dwSize = sizeof(PROCESSENTRY32W);
+    bool found = false;
+    if (Process32FirstW(snapshot, &process_entry)) {
+        do {
+            if (is_bambu_connect_process_name(wxString(process_entry.szExeFile).utf8_string())) {
+                found = true;
+                break;
+            }
+        } while (Process32NextW(snapshot, &process_entry));
+    }
+    CloseHandle(snapshot);
+    return found;
+#else
+    FILE* process_pipe = popen("ps -A -o comm=", "r");
+    if (process_pipe == nullptr)
+        return false;
+
+    char        buffer[1024];
+    std::string process_name;
+    while (fgets(buffer, static_cast<int>(sizeof(buffer)), process_pipe) != nullptr) {
+        process_name.assign(buffer);
+        process_name.erase(std::remove(process_name.begin(), process_name.end(), '\n'), process_name.end());
+        process_name.erase(std::remove(process_name.begin(), process_name.end(), '\r'), process_name.end());
+        if (is_bambu_connect_process_name(process_name)) {
+            pclose(process_pipe);
+            return true;
+        }
+    }
+    pclose(process_pipe);
+    return false;
+#endif
+}
+
+bool wait_for_bambu_connect_process()
+{
+    constexpr int process_check_attempts = 10;
+    constexpr auto process_check_delay   = std::chrono::milliseconds(300);
+    for (int attempt = 0; attempt < process_check_attempts; ++attempt) {
+        if (is_bambu_connect_running())
+            return true;
+        std::this_thread::sleep_for(process_check_delay);
+    }
+    return false;
+}
+} // namespace
 std::string get_nozzle_volume_type_cloud_string(NozzleVolumeType nozzle_volume_type)
 {
     if (nozzle_volume_type == NozzleVolumeType::nvtStandard) {
@@ -2185,12 +2264,22 @@ void SelectMachineDialog::on_bambu_connect_btn(wxCommandEvent &)
     const std::string uri = build_bambu_connect_uri(normalized_path);
     if (!launch_bambu_connect_uri(uri)) {
         show_error(this, _L("Unable to launch Bambu Connect. Please make sure it is installed and registered."), false);
+    } else if (wait_for_bambu_connect_process()) {
+        BOOST_LOG_TRIVIAL(info) << "bambu_connect: process detected, closing send print dialog";
+        Enable_Send_Button(true);
+        update_bambu_connect_button_visibility();
+        if (IsModal())
+            EndModal(wxID_OK);
+        else
+            Hide();
+        return;
+    } else {
+        show_error(this, _L("Bambu Connect launch was triggered, but no running Bambu Connect process was detected."), false);
     }
 
     Enable_Send_Button(true);
     update_bambu_connect_button_visibility();
 }
-
 wxString SelectMachineDialog::format_steel_name(NozzleType type)
 {
     if (type == NozzleType::ntHardenedSteel) {
