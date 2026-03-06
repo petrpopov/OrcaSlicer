@@ -534,7 +534,7 @@ wxMenu* MenuFactory::append_submenu_add_handy_model(wxMenu* menu, ModelVolumeTyp
     auto sub_menu = new wxMenu;
 
     for (auto &item : {L("Orca Cube"), L("Orca Tolerance Test"), L("3DBenchy"), L("Cali Cat"), L("Autodesk FDM Test"),
-                       L("Voron Cube"), L("Stanford Bunny"), L("Orca String Hell") }) {
+                       L("Voron Cube"), L("XYZ Calibration Cube"), L("Stanford Bunny"), L("Orca String Hell") }) {
         append_menu_item(
             sub_menu, wxID_ANY, _(item), "",
             [type, item](wxCommandEvent&) {
@@ -553,6 +553,8 @@ wxMenu* MenuFactory::append_submenu_add_handy_model(wxMenu* menu, ModelVolumeTyp
                     file_name = "ksr_fdmtest_v4.drc";
                 else if (file_name == L("Voron Cube"))
                     file_name = "Voron_Design_Cube_v7.drc";
+                else if (file_name == L("XYZ Calibration Cube"))
+                    file_name = "xyzCalibration_cube.stl";
                 else if (file_name == L("Stanford Bunny"))
                     file_name = "Stanford_Bunny.drc";
                 else if (file_name == L("Orca String Hell")) {
