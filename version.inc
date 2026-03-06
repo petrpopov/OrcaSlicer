@@ -8,7 +8,7 @@ set(SLIC3R_APP_DATA_KEY "OrcaSlicerPE")
 if(NOT DEFINED BBL_INTERNAL_TESTING)
 set(BBL_INTERNAL_TESTING "0")
 endif()
-set(SoftFever_VERSION "2.3.2-pe")
+set(SoftFever_VERSION "2.3.2-pe.6")
 string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)"
        SoftFever_VERSION_MATCH ${SoftFever_VERSION})
 set(ORCA_VERSION_MAJOR ${CMAKE_MATCH_1})
