@@ -1759,9 +1759,9 @@ void ModelObject::translate(double x, double y, double z)
         v->translate(x, y, z);
     }
 
-    if (m_bounding_box_approx_valid)
+    if (m_bounding_box_approx_valid && m_bounding_box_approx.defined)
         m_bounding_box_approx.translate(x, y, z);
-    if (m_bounding_box_exact_valid)
+    if (m_bounding_box_exact_valid && m_bounding_box_exact.defined)
         m_bounding_box_exact.translate(x, y, z);
 }
 

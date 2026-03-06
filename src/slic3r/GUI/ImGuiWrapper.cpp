@@ -541,15 +541,13 @@ void ImGuiWrapper::new_frame()
     // synchronize key states
     // when the application loses the focus it may happen that the key up event is not processed
 
-    // synchronize modifier keys
-    constexpr std::array<std::pair<ImGuiKeyModFlags_, wxKeyCode>, 3> imgui_mod_keys{
-        std::make_pair(ImGuiKeyModFlags_Ctrl, WXK_CONTROL),
-        std::make_pair(ImGuiKeyModFlags_Shift, WXK_SHIFT),
-        std::make_pair(ImGuiKeyModFlags_Alt, WXK_ALT) };
-    for (const std::pair<ImGuiKeyModFlags_, wxKeyCode>& key : imgui_mod_keys) {
-        if ((io.KeyMods & key.first) != 0 && !wxGetKeyState(key.second))
-            io.KeyMods &= ~key.first;
-    }
+    // synchronize modifier keys.
+    // Do not modify io.KeyMods directly here: it must stay consistent with
+    // io.KeyCtrl/io.KeyShift/io.KeyAlt/io.KeySuper until EndFrame().
+    io.KeyCtrl  = io.KeyCtrl  && wxGetKeyState(WXK_CONTROL);
+    io.KeyShift = io.KeyShift && wxGetKeyState(WXK_SHIFT);
+    io.KeyAlt   = io.KeyAlt   && wxGetKeyState(WXK_ALT);
+    io.KeySuper = io.KeySuper && wxGetKeyState(WXK_COMMAND);
 
     // Not sure if it is neccessary
     // values from 33 to 126 are reserved for the standard ASCII characters
