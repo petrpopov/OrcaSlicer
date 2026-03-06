@@ -10614,8 +10614,9 @@ static std::map<t_custom_gcode_key, t_config_option_keys> s_CustomGcodeSpecificP
     {"machine_start_gcode",         {}},
     {"machine_end_gcode",           {"layer_num", "layer_z", "max_layer_z", "filament_extruder_id"}},
     {"before_layer_change_gcode",   {"layer_num", "layer_z", "max_layer_z"}},
-    {"layer_change_gcode",          {"layer_num", "layer_z", "max_layer_z"}},
-    {"timelapse_gcode",             {"layer_num", "layer_z", "max_layer_z"}},
+    {"layer_change_gcode",          {"layer_num", "layer_z", "max_layer_z", "most_used_physical_extruder_id"}},
+    {"timelapse_gcode",             {"layer_num", "layer_z", "max_layer_z", "curr_physical_extruder_id", "has_timelapse_safe_pos",
+                                     "most_used_physical_extruder_id", "timelapse_pos_x", "timelapse_pos_y"}},
     {"change_filament_gcode",       {"layer_num", "layer_z", "max_layer_z", "next_extruder", "previous_extruder", "fan_speed",
                                "first_flush_volume", "flush_length_1", "flush_length_2", "flush_length_3", "flush_length_4",
                                "new_filament_e_feedrate", "new_filament_temp", "new_retract_length",
@@ -10628,7 +10629,7 @@ static std::map<t_custom_gcode_key, t_config_option_keys> s_CustomGcodeSpecificP
     {"machine_pause_gcode",         {}},
     {"template_custom_gcode",       {}},
     // Filament G-code
-    {"filament_start_gcode",        {"filament_extruder_id"}},
+    {"filament_start_gcode",        {"layer_num", "layer_z", "max_layer_z", "filament_extruder_id"}},
     {"filament_end_gcode",          {"layer_num", "layer_z", "max_layer_z", "filament_extruder_id"}},
 };
 
@@ -10657,6 +10658,26 @@ CustomGcodeSpecificConfigDef::CustomGcodeSpecificConfigDef()
     def = this->add("filament_extruder_id", coInt);
     def->label = L("Filament extruder ID");
     def->tooltip = L("The current extruder ID. The same as current_extruder.");
+
+    def = this->add("most_used_physical_extruder_id", coInt);
+    def->label = L("Most used physical extruder ID");
+    def->tooltip = L("Physical extruder ID that is used most in the print.");
+
+    def = this->add("curr_physical_extruder_id", coInt);
+    def->label = L("Current physical extruder ID");
+    def->tooltip = L("Physical extruder ID currently active.");
+
+    def = this->add("timelapse_pos_x", coInt);
+    def->label = L("Timelapse position X");
+    def->tooltip = L("X coordinate used for timelapse safe position.");
+
+    def = this->add("timelapse_pos_y", coInt);
+    def->label = L("Timelapse position Y");
+    def->tooltip = L("Y coordinate used for timelapse safe position.");
+
+    def = this->add("has_timelapse_safe_pos", coBool);
+    def->label = L("Has timelapse safe position");
+    def->tooltip = L("Whether timelapse safe position is valid for current context.");
 
 // change_filament_gcode
     new_def("previous_extruder", coInt, "Previous extruder", "Index of the extruder that is being unloaded. The index is zero based (first extruder has index 0).");

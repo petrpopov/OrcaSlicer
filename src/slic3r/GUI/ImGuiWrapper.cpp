@@ -2836,7 +2836,9 @@ void ImGuiWrapper::init_font(bool compress)
     glsafe(::glBindTexture(GL_TEXTURE_2D, m_font_texture));
     glsafe(::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
     glsafe(::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+#if !SLIC3R_OPENGL_ES
     glsafe(::glPixelStorei(GL_UNPACK_ROW_LENGTH, 0));
+#endif // !SLIC3R_OPENGL_ES
     if (compress && GLEW_EXT_texture_compression_s3tc)
         glsafe(::glTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels));
     else
@@ -3368,12 +3370,17 @@ bool IMTexture::load_from_svg_file(const std::string& filename, unsigned width, 
     unsigned m_image_texture{ 0 };
     unsigned char* pixels = (unsigned char*)(&data[0]);
 
+    // Drop stale GL errors from previous operations to avoid tripping asserts here.
+    while (::glGetError() != GL_NO_ERROR) {}
+
     glsafe(::glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture));
     glsafe(::glGenTextures(1, &m_image_texture));
     glsafe(::glBindTexture(GL_TEXTURE_2D, m_image_texture));
     glsafe(::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
     glsafe(::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+#if !SLIC3R_OPENGL_ES
     glsafe(::glPixelStorei(GL_UNPACK_ROW_LENGTH, 0));
+#endif // !SLIC3R_OPENGL_ES
     glsafe(::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels));
 
     // Store our identifier

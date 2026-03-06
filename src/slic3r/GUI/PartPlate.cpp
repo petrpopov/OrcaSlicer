@@ -933,12 +933,14 @@ void PartPlate::render_exclude_area(bool force_default_color) {
 	// draw exclude area
 	glsafe(::glDepthMask(GL_FALSE));
 
-	if (m_selected) {
-		glsafe(::glColor4fv(select_color.data()));
-	}
-	else {
-		glsafe(::glColor4fv(unselect_color.data()));
-	}
+    // glColor* is not available in OpenGL core profile.
+    // Exclude-area rendering uses m_exclude_triangles.set_color(...) below.
+    if (!OpenGLManager::get_gl_info().is_core_profile()) {
+        if (m_selected)
+            glsafe(::glColor4fv(select_color.data()));
+        else
+            glsafe(::glColor4fv(unselect_color.data()));
+    }
 
 	m_exclude_triangles.set_color(m_selected ? select_color : unselect_color);
     m_exclude_triangles.render();
