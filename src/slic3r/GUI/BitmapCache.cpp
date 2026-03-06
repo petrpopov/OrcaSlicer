@@ -635,7 +635,9 @@ bool BitmapCache::load_from_svg_file_change_color(const std::string &filename, u
     glsafe(::glBindTexture(GL_TEXTURE_2D, m_image_texture));
     glsafe(::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
     glsafe(::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+#if !SLIC3R_OPENGL_ES
     glsafe(::glPixelStorei(GL_UNPACK_ROW_LENGTH, 0));
+#endif // !SLIC3R_OPENGL_ES
     glsafe(::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels));
 
     // Store our identifier

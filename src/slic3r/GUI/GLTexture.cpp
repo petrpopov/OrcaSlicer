@@ -689,8 +689,11 @@ void GLTexture::render_sub_texture(unsigned int tex_id, float left, float right,
     glsafe(::glEnable(GL_BLEND));
     glsafe(::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
-    glsafe(::glEnable(GL_TEXTURE_2D));
-    glsafe(::glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE));
+    // Fixed-function texture state is invalid in OpenGL core profile.
+    if (!OpenGLManager::get_gl_info().is_core_profile()) {
+        glsafe(::glEnable(GL_TEXTURE_2D));
+        glsafe(::glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE));
+    }
 
     glsafe(::glBindTexture(GL_TEXTURE_2D, (GLuint)tex_id));
 
@@ -723,7 +726,8 @@ void GLTexture::render_sub_texture(unsigned int tex_id, float left, float right,
 
     glsafe(::glBindTexture(GL_TEXTURE_2D, 0));
 
-    glsafe(::glDisable(GL_TEXTURE_2D));
+    if (!OpenGLManager::get_gl_info().is_core_profile())
+        glsafe(::glDisable(GL_TEXTURE_2D));
     glsafe(::glDisable(GL_BLEND));
 }
 

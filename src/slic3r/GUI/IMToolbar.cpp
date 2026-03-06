@@ -31,7 +31,9 @@ bool IMToolbarItem::generate_texture()
     glsafe(::glBindTexture(GL_TEXTURE_2D, m_image_texture));
     glsafe(::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
     glsafe(::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+#if !SLIC3R_OPENGL_ES
     glsafe(::glPixelStorei(GL_UNPACK_ROW_LENGTH, 0));
+#endif // !SLIC3R_OPENGL_ES
     glsafe(::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image_width, image_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels));
 
     // Store our identifier
@@ -86,7 +88,9 @@ bool IMReturnToolbar::init()
     glsafe(::glBindTexture(GL_TEXTURE_2D, m_image_texture));
     glsafe(::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
     glsafe(::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+#if !SLIC3R_OPENGL_ES
     glsafe(::glPixelStorei(GL_UNPACK_ROW_LENGTH, 0));
+#endif // !SLIC3R_OPENGL_ES
     if (compress && GLEW_EXT_texture_compression_s3tc)
         glsafe(::glTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, data.width, data.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels));
     else
