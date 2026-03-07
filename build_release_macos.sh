@@ -127,7 +127,6 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_BUILD_DIR="$PROJECT_DIR/build/$ARCH"
 DEPS_DIR="$PROJECT_DIR/deps"
 APP_BUNDLE_NAME="OrcaSlicerPE"
-APP_BINARY_NAME="OrcaSlicerPE"
 
 # For Multi-config generators like Ninja and Xcode
 export BUILD_DIR_CONFIG_SUBDIR="/$BUILD_CONFIG"
@@ -281,17 +280,17 @@ function build_universal() {
     echo "Building universal binary..."
 
     PROJECT_BUILD_DIR="$PROJECT_DIR/build/$ARCH"
-    ARM64_APP="$PROJECT_DIR/build/arm64/OrcaSlicer/OrcaSlicer.app"
-    X86_64_APP="$PROJECT_DIR/build/x86_64/OrcaSlicer/OrcaSlicer.app"
+    ARM64_APP="$PROJECT_DIR/build/arm64/OrcaSlicer/${APP_BUNDLE_NAME}.app"
+    X86_64_APP="$PROJECT_DIR/build/x86_64/OrcaSlicer/${APP_BUNDLE_NAME}.app"
 
     mkdir -p "$PROJECT_BUILD_DIR/OrcaSlicer"
     UNIVERSAL_APP="$PROJECT_BUILD_DIR/OrcaSlicer/${APP_BUNDLE_NAME}.app"
     rm -rf "$UNIVERSAL_APP"
     cp -R "$ARM64_APP" "$UNIVERSAL_APP"
 
-    echo "Creating universal binaries for OrcaSlicer.app..."
+    echo "Creating universal binaries for ${APP_BUNDLE_NAME}.app..."
     lipo_dir "$UNIVERSAL_APP" "$X86_64_APP"
-    echo "Universal OrcaSlicer.app created at $UNIVERSAL_APP"
+    echo "Universal ${APP_BUNDLE_NAME}.app created at $UNIVERSAL_APP"
     # Create universal binary for profile validator if it exists
     ARM64_VALIDATOR="$PROJECT_DIR/build/arm64/OrcaSlicer/OrcaSlicer_profile_validator.app"
     X86_64_VALIDATOR="$PROJECT_DIR/build/x86_64/OrcaSlicer/OrcaSlicer_profile_validator.app"
