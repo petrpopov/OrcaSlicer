@@ -8,6 +8,8 @@
 
 Форк OrcaSlicer для тех, кто хочет продолжать использовать любимый слайсер с принтерами Bambu Lab через **Bambu Connect**.
 
+[Инструкция по установке и первой печати (RU)](doc/peter-edition/wiki/installation-and-first-print.ru.md) · [Installation and first print (EN)](doc/peter-edition/wiki/installation-and-first-print.en.md) · [Релиз v2.3.2-pe.6](doc/peter-edition/releases/v2.3.2-pe.6.md)
+
 </div>
 
 ## Почему этот форк
@@ -30,6 +32,8 @@
 2. В OrcaSlicer откройте `Preferences` и включите опцию `Use Bambu Lab Connect`.
 3. Перед отправкой убедитесь, что `Bambu Connect` уже запущен и видит ваш текущий принтер.
 4. Подготовьте модель и нажмите `BBL Connect` в окне отправки на печать.
+
+Подробная инструкция: [Установка и первая печать (RU)](doc/peter-edition/wiki/installation-and-first-print.ru.md)
 
 ## macOS: установка и запуск неподписанного `.dmg`
 
@@ -65,6 +69,8 @@ xattr -dr com.apple.quarantine "/Applications/OrcaSlicerPE.app"
 ## Скачать
 
 - Релизы этого форка: [GitHub Releases](https://github.com/petrpopov/OrcaSlicer/releases)
+- Текущий релизный текст: [v2.3.2-pe.6](doc/peter-edition/releases/v2.3.2-pe.6.md)
+- Подробная wiki-страница: [Установка и первая печать (RU)](doc/peter-edition/wiki/installation-and-first-print.ru.md)
 
 ## Лицензия и атрибуция
 

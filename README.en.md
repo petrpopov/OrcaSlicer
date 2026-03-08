@@ -8,6 +8,8 @@
 
 An OrcaSlicer fork for users who want to keep using their favorite slicer with Bambu Lab printers via **Bambu Connect**.
 
+[Installation and first print (EN)](doc/peter-edition/wiki/installation-and-first-print.en.md) · [Установка и первая печать (RU)](doc/peter-edition/wiki/installation-and-first-print.ru.md) · [Release v2.3.2-pe.6](doc/peter-edition/releases/v2.3.2-pe.6.md)
+
 </div>
 
 ## Why this fork exists
@@ -30,6 +32,8 @@ Important: the core OrcaSlicer functionality was not rewritten or broken; change
 2. In OrcaSlicer, open `Preferences` and enable `Use Bambu Lab Connect`.
 3. Before sending, make sure `Bambu Connect` is already running and can see your current printer.
 4. Prepare your model and click `BBL Connect` in the send/print dialog.
+
+Detailed guide: [Installation and first print (EN)](doc/peter-edition/wiki/installation-and-first-print.en.md)
 
 ## macOS: install and run unsigned `.dmg` build
 
@@ -65,6 +69,8 @@ Build flow is the same as in upstream OrcaSlicer.
 ## Download
 
 - Fork releases: [GitHub Releases](https://github.com/petrpopov/OrcaSlicer/releases)
+- Current release text: [v2.3.2-pe.6](doc/peter-edition/releases/v2.3.2-pe.6.md)
+- Detailed wiki page: [Installation and first print (EN)](doc/peter-edition/wiki/installation-and-first-print.en.md)
 
 ## License and attribution
 
