@@ -103,7 +103,7 @@ jobs:
         if: steps.cache_deps.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          ./build_release_macos.sh -dx -1 -a arm64 -t "${DEPLOYMENT_TARGET}"
+          ./build_release_macos.sh -dx -1 -a arm64
 
       - name: Build deps x86_64
         if: steps.cache_deps.outputs.cache-hit != 'true'
@@ -114,7 +114,7 @@ jobs:
       - name: Build OrcaSlicerPE arm64
         shell: bash
         run: |
-          ./build_release_macos.sh -s -x -1 -a arm64 -t "${DEPLOYMENT_TARGET}"
+          ./build_release_macos.sh -s -x -1 -a arm64
 
       - name: Build OrcaSlicerPE x86_64
         shell: bash
