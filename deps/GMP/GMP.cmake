@@ -21,9 +21,16 @@ if (MSVC)
 
 else ()
     set(_gmp_ccflags "-O2 -DNDEBUG -fPIC -DPIC -Wall -Wmissing-prototypes -Wpointer-arith -pedantic -fomit-frame-pointer -fno-common")
+    set(_gmp_ldflags "${CMAKE_EXE_LINKER_FLAGS}")
+    set(_gmp_configure_env env)
     set(_gmp_build_tgt "${CMAKE_SYSTEM_PROCESSOR}")
 
     if (APPLE)
+        list(APPEND _gmp_configure_env
+            "SDKROOT=${CMAKE_OSX_SYSROOT}"
+            "MACOSX_DEPLOYMENT_TARGET=${DEP_OSX_TARGET}"
+        )
+        set(_gmp_sysroot_flags "-isysroot ${CMAKE_OSX_SYSROOT}")
         if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
             set(_gmp_build_arch aarch64)
         else ()
@@ -37,10 +44,12 @@ else ()
                 set(_gmp_host_arch x86_64)
                 set(_gmp_host_arch_flags "-arch x86_64")
             endif()
-            set(_gmp_ccflags "${_gmp_ccflags} ${_gmp_host_arch_flags} -mmacosx-version-min=${DEP_OSX_TARGET}")
+            set(_gmp_ccflags "${_gmp_ccflags} ${_gmp_host_arch_flags} ${_gmp_sysroot_flags} -mmacosx-version-min=${DEP_OSX_TARGET}")
+            set(_gmp_ldflags "${_gmp_ldflags} ${_gmp_sysroot_flags}")
             set(_gmp_build_tgt --build=${_gmp_build_arch}-apple-darwin --host=${_gmp_host_arch}-apple-darwin)
         else ()
-            set(_gmp_ccflags "${_gmp_ccflags} -mmacosx-version-min=${DEP_OSX_TARGET}")
+            set(_gmp_ccflags "${_gmp_ccflags} ${_gmp_sysroot_flags} -mmacosx-version-min=${DEP_OSX_TARGET}")
+            set(_gmp_ldflags "${_gmp_ldflags} ${_gmp_sysroot_flags}")
             set(_gmp_build_tgt "--build=${_gmp_build_arch}-apple-darwin")
         endif()
     elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -65,7 +74,7 @@ else ()
         DOWNLOAD_DIR ${DEP_DOWNLOAD_DIR}/GMP
         PATCH_COMMAND git apply ${GMP_DIRECTORY_FLAG} --verbose ${CMAKE_CURRENT_LIST_DIR}/0001-GMP_GCC15.patch
         BUILD_IN_SOURCE ON
-        CONFIGURE_COMMAND  env "CC=${CMAKE_C_COMPILER}" "CXX=${CMAKE_CXX_COMPILER}" "CFLAGS=${_gmp_ccflags}" "CXXFLAGS=${_gmp_ccflags}" "LDFLAGS=${CMAKE_EXE_LINKER_FLAGS}" ./configure ${_cross_compile_arg} --enable-shared=no --enable-cxx=yes --enable-static=yes "--prefix=${DESTDIR}" ${_gmp_build_tgt}
+        CONFIGURE_COMMAND  ${_gmp_configure_env} "CC=${CMAKE_C_COMPILER}" "CXX=${CMAKE_CXX_COMPILER}" "CFLAGS=${_gmp_ccflags}" "CXXFLAGS=${_gmp_ccflags}" "LDFLAGS=${_gmp_ldflags}" ./configure ${_cross_compile_arg} --enable-shared=no --enable-cxx=yes --enable-static=yes "--prefix=${DESTDIR}" ${_gmp_build_tgt}
         BUILD_COMMAND     make -j
         INSTALL_COMMAND   make install
     )
