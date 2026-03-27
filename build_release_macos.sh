@@ -98,6 +98,12 @@ if [ -z "$OSX_DEPLOYMENT_TARGET" ]; then
   export OSX_DEPLOYMENT_TARGET="11.3"
 fi
 
+if [ -z "$SDKROOT" ]; then
+  export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
+fi
+
+export MACOSX_DEPLOYMENT_TARGET="$OSX_DEPLOYMENT_TARGET"
+
 if [ -z "$CMAKE_IGNORE_PREFIX_PATH" ]; then
   export CMAKE_IGNORE_PREFIX_PATH="/opt/local:/usr/local:/opt/homebrew"
 fi
@@ -137,6 +143,29 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_BUILD_DIR="$PROJECT_DIR/build/$ARCH"
 DEPS_DIR="$PROJECT_DIR/deps"
 APP_BUNDLE_NAME="OrcaSlicerPE"
+
+MACOS_WRAPPER_DIR="$PROJECT_DIR/build/mac_wrappers"
+mkdir -p "$MACOS_WRAPPER_DIR"
+
+REAL_CC="$(xcrun --find cc)"
+REAL_CXX="$(xcrun --find c++)"
+
+CC_WRAPPER="$MACOS_WRAPPER_DIR/cc-with-sdkroot"
+CXX_WRAPPER="$MACOS_WRAPPER_DIR/cxx-with-sdkroot"
+
+cat > "$CC_WRAPPER" <<EOF
+#!/bin/sh
+exec "$REAL_CC" -isysroot "\${SDKROOT}" -mmacosx-version-min="\${OSX_DEPLOYMENT_TARGET}" "\$@"
+EOF
+
+cat > "$CXX_WRAPPER" <<EOF
+#!/bin/sh
+exec "$REAL_CXX" -isysroot "\${SDKROOT}" -mmacosx-version-min="\${OSX_DEPLOYMENT_TARGET}" "\$@"
+EOF
+
+chmod +x "$CC_WRAPPER" "$CXX_WRAPPER"
+export ORCA_MACOS_CC_WRAPPER="$CC_WRAPPER"
+export ORCA_MACOS_CXX_WRAPPER="$CXX_WRAPPER"
 
 # For Multi-config generators like Ninja and Xcode
 export BUILD_DIR_CONFIG_SUBDIR="/$BUILD_CONFIG"

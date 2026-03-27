@@ -24,6 +24,8 @@ else ()
     set(_gmp_ldflags "${CMAKE_EXE_LINKER_FLAGS}")
     set(_gmp_configure_env env)
     set(_gmp_build_tgt "${CMAKE_SYSTEM_PROCESSOR}")
+    set(_gmp_cc "${CMAKE_C_COMPILER}")
+    set(_gmp_cxx "${CMAKE_CXX_COMPILER}")
 
     if (APPLE)
         list(APPEND _gmp_configure_env
@@ -31,6 +33,12 @@ else ()
             "MACOSX_DEPLOYMENT_TARGET=${DEP_OSX_TARGET}"
         )
         set(_gmp_sysroot_flags "-isysroot ${CMAKE_OSX_SYSROOT}")
+        if (DEFINED ENV{ORCA_MACOS_CC_WRAPPER} AND NOT "$ENV{ORCA_MACOS_CC_WRAPPER}" STREQUAL "")
+            set(_gmp_cc "$ENV{ORCA_MACOS_CC_WRAPPER}")
+        endif ()
+        if (DEFINED ENV{ORCA_MACOS_CXX_WRAPPER} AND NOT "$ENV{ORCA_MACOS_CXX_WRAPPER}" STREQUAL "")
+            set(_gmp_cxx "$ENV{ORCA_MACOS_CXX_WRAPPER}")
+        endif ()
         if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
             set(_gmp_build_arch aarch64)
         else ()
@@ -74,7 +82,7 @@ else ()
         DOWNLOAD_DIR ${DEP_DOWNLOAD_DIR}/GMP
         PATCH_COMMAND git apply ${GMP_DIRECTORY_FLAG} --verbose ${CMAKE_CURRENT_LIST_DIR}/0001-GMP_GCC15.patch
         BUILD_IN_SOURCE ON
-        CONFIGURE_COMMAND  ${_gmp_configure_env} "CC=${CMAKE_C_COMPILER}" "CXX=${CMAKE_CXX_COMPILER}" "CFLAGS=${_gmp_ccflags}" "CXXFLAGS=${_gmp_ccflags}" "LDFLAGS=${_gmp_ldflags}" ./configure ${_cross_compile_arg} --enable-shared=no --enable-cxx=yes --enable-static=yes "--prefix=${DESTDIR}" ${_gmp_build_tgt}
+        CONFIGURE_COMMAND  ${_gmp_configure_env} "CC=${_gmp_cc}" "CXX=${_gmp_cxx}" "CFLAGS=${_gmp_ccflags}" "CXXFLAGS=${_gmp_ccflags}" "LDFLAGS=${_gmp_ldflags}" ./configure ${_cross_compile_arg} --enable-shared=no --enable-cxx=yes --enable-static=yes "--prefix=${DESTDIR}" ${_gmp_build_tgt}
         BUILD_COMMAND     make -j
         INSTALL_COMMAND   make install
     )
