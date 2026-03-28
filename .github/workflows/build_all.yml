@@ -8,6 +8,7 @@ on:
     tags:
       - 'v*'
       - 'V*'
+      - '[0-9]*'
     paths:
       - 'deps/**'
       - 'deps_src/**'

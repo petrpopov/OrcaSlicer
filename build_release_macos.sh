@@ -99,7 +99,8 @@ if [ -z "$OSX_DEPLOYMENT_TARGET" ]; then
 fi
 
 if [ -z "$SDKROOT" ]; then
-  export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
+  SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
+  export SDKROOT
 fi
 
 export MACOSX_DEPLOYMENT_TARGET="$OSX_DEPLOYMENT_TARGET"

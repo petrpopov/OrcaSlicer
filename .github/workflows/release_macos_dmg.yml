@@ -5,6 +5,7 @@ on:
     tags:
       - "v*"
       - "V*"
+      - "[0-9]*"
   workflow_dispatch:
     inputs:
       git_ref:
@@ -18,7 +19,7 @@ on:
         default: false
         type: boolean
       release_tag:
-        description: "Release tag name when publish_release=true (example: v2.3.2-pe.1)"
+        description: "Release tag name when publish_release=true (example: 2.3.2-pe.7 or v2.3.2-pe.7)"
         required: false
         default: ""
         type: string
@@ -109,7 +110,7 @@ jobs:
         if: steps.cache_deps.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          arch -x86_64 ./build_release_macos.sh -dx -1 -a x86_64 -t "${DEPLOYMENT_TARGET}"
+          ./build_release_macos.sh -dx -1 -a x86_64 -t "${DEPLOYMENT_TARGET}"
 
       - name: Build OrcaSlicerPE arm64
         shell: bash
@@ -119,7 +120,7 @@ jobs:
       - name: Build OrcaSlicerPE x86_64
         shell: bash
         run: |
-          arch -x86_64 ./build_release_macos.sh -s -x -1 -a x86_64 -t "${DEPLOYMENT_TARGET}"
+          ./build_release_macos.sh -s -x -1 -a x86_64 -t "${DEPLOYMENT_TARGET}"
 
       - name: Build OrcaSlicerPE (universal)
         shell: bash
