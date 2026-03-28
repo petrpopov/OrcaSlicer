@@ -19,5 +19,8 @@ Unit tests rely on Catch2 (`tests/catch2/`). Name specs after the component unde
 ## Commit & Pull Request Guidelines
 The history favors concise, sentence-style subject lines with optional issue references, e.g., `Fix grid lines origin for multiple plates (#10724)`. Squash fixups locally before opening a PR. Complete `.github/pull_request_template.md`, include reproduction steps or screenshots for UI changes, and mention impacted presets or translations. Link issues via `Closes #NNNN` when applicable, and call out dependency bumps or profile migrations for maintainer review.
 
+## Upstream Sync Notes
+When merging or rebasing from `upstream`, preserve fork-specific build and release customizations instead of taking upstream changes blindly. Pay extra attention to `.github/workflows/**`, `build_release_macos.sh`, Windows/Linux release scripts, release tags, artifact naming, signing/notarization steps, and fork-only publishing logic. After resolving merge conflicts from upstream, explicitly re-check that our PE build fixes and release workflow changes are still present before considering the sync complete.
+
 ## Security & Configuration Tips
 Follow `SECURITY.md` for vulnerability reporting. Keep API tokens and printer credentials out of tracked configs; use `sandboxes/` for experimental settings. When touching third-party code in `deps_src/`, record the upstream commit or release in your PR description and run the relevant platform build script to confirm integration.
