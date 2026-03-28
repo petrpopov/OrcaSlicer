@@ -1,5 +1,6 @@
 #include "libslic3r/Technologies.hpp"
 #include "GUI_App.hpp"
+#include "VersionCheck.hpp"
 #include "GUI_Init.hpp"
 #include "GUI_ObjectList.hpp"
 #include "GUI_Factories.hpp"
@@ -5416,8 +5417,7 @@ void GUI_App::check_new_version_sf(bool show_tips, int by_user)
             std::stringstream           json_stream(body);
             boost::property_tree::read_json(json_stream, root);
 
-            std::regex matcher("[0-9]+\\.[0-9]+(\\.[0-9]+)*(-[A-Za-z0-9]+)?(\\+[A-Za-z0-9]+)?");
-            Semver    current_version = get_version(SoftFever_VERSION, matcher);
+            Semver    current_version = GUI::parse_release_tag_version(SoftFever_VERSION).value_or(Semver::invalid());
             Semver    best_pre(0, 0, 0);
             Semver    best_release(0, 0, 0);
             bool      best_pre_valid = false;
@@ -5432,12 +5432,8 @@ void GUI_App::check_new_version_sf(bool show_tips, int by_user)
                 if (!tag_opt)
                     return;
 
-                std::string tag = *tag_opt;
-                if (!tag.empty() && tag.front() == 'v')
-                    tag.erase(0, 1);
-
-                Semver tag_version = get_version(tag, matcher);
-                if (!tag_version.valid())
+                const auto tag_version = GUI::parse_release_tag_version(*tag_opt);
+                if (!tag_version || !tag_version->valid())
                     return;
 
                 const bool is_prerelease = node.get_optional<bool>("prerelease").get_value_or(false);
@@ -5445,15 +5441,15 @@ void GUI_App::check_new_version_sf(bool show_tips, int by_user)
                 const std::string body_copy = node.get_optional<std::string>("body").get_value_or(std::string());
 
                 if (is_prerelease) {
-                    if (!best_pre_valid || best_pre < tag_version) {
-                        best_pre        = tag_version;
+                    if (!best_pre_valid || best_pre < *tag_version) {
+                        best_pre        = *tag_version;
                         best_pre_url    = html_url;
                         best_pre_content = body_copy;
                         best_pre_valid  = true;
                     }
                 } else {
-                    if (!best_release_valid || best_release < tag_version) {
-                        best_release         = tag_version;
+                    if (!best_release_valid || best_release < *tag_version) {
+                        best_release         = *tag_version;
                         best_release_url     = html_url;
                         best_release_content = body_copy;
                         best_release_valid   = true;
