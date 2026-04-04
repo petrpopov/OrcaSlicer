@@ -191,6 +191,7 @@ void TabButton::render(wxDC &dc)
         pt.y = (size.y - showimg.GetHeight()) / 2;
         dc.DrawBitmap(showimg, pt);
     }
+
 }
 
 void TabButton::messureSize()
