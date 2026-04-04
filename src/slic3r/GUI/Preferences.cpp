@@ -1159,6 +1159,7 @@ wxBoxSizer* PreferencesDialog::create_item_downloads(wxString title, wxString to
             wxString download_path = dialog.GetPath();
             std::string download_path_str = download_path.ToUTF8().data();
             app_config->set("download_path", download_path_str);
+            app_config->save();
             m_staticTextPath->SetLabelText(download_path);
             m_staticTextPath->SetToolTip(download_path);
             m_sizer_checkbox->Layout();
