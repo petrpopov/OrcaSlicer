@@ -2387,19 +2387,26 @@ static boost::optional<Semver> parse_semver_from_ini(std::string path)
 void GUI_App::init_download_path()
 {
     std::string down_path = app_config->get("download_path");
+    const auto set_download_path = [this](const std::string& path) {
+        app_config->set("download_path", path);
+        app_config->save();
+    };
 
     if (down_path.empty()) {
         std::string user_down_path = wxStandardPaths::Get().GetUserDir(wxStandardPaths::Dir_Downloads).ToUTF8().data();
-        app_config->set("download_path", user_down_path);
+        set_download_path(user_down_path);
     }
+    // Only non-macOS retries the stored path if it was deleted.
+#ifndef __APPLE__
     else {
         fs::path dp(down_path);
         if (!fs::exists(dp)) {
 
             std::string user_down_path = wxStandardPaths::Get().GetUserDir(wxStandardPaths::Dir_Downloads).ToUTF8().data();
-            app_config->set("download_path", user_down_path);
+            set_download_path(user_down_path);
         }
     }
+#endif
 }
 
 #if wxUSE_WEBVIEW_EDGE
