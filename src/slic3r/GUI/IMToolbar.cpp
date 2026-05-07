@@ -1,7 +1,7 @@
 #include "IMToolbar.hpp"
 
 #include "3DScene.hpp"
-#include <GL/glew.h>
+#include <glad/gl.h>
 #include <imgui/imgui_internal.h>
 #include <imgui/imgui.h>
 
@@ -91,7 +91,7 @@ bool IMReturnToolbar::init()
 #if !SLIC3R_OPENGL_ES
     glsafe(::glPixelStorei(GL_UNPACK_ROW_LENGTH, 0));
 #endif // !SLIC3R_OPENGL_ES
-    if (compress && GLEW_EXT_texture_compression_s3tc)
+    if (compress && GLAD_GL_EXT_texture_compression_s3tc)
         glsafe(::glTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, data.width, data.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels));
     else
         glsafe(::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, data.width, data.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels));

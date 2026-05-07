@@ -1,6 +1,7 @@
 get_filename_component(_TEST_NAME ${CMAKE_CURRENT_LIST_DIR} NAME)
 add_executable(${_TEST_NAME}_tests
     ${_TEST_NAME}_tests_main.cpp
+    test_download_path_utils.cpp
     test_update_version_parsing.cpp
     )
 
@@ -11,14 +12,6 @@ endif ()
 target_link_libraries(${_TEST_NAME}_tests test_common libslic3r_gui libslic3r Catch2::Catch2WithMain)
 set_property(TARGET ${_TEST_NAME}_tests PROPERTY FOLDER "tests")
 
-if (WIN32)
-    if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-    orcaslicer_copy_dlls(COPY_DLLS "Debug" "d" output_dlls_Debug)
-    elseif("${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo")
-    orcaslicer_copy_dlls(COPY_DLLS "RelWithDebInfo" "" output_dlls_Release)
-    else()
-    orcaslicer_copy_dlls(COPY_DLLS "Release" "" output_dlls_Release)
-    endif()
-endif()
+orcaslicer_copy_test_dlls()
 
 catch_discover_tests(${_TEST_NAME}_tests)

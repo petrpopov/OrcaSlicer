@@ -16,7 +16,7 @@
     #include <wx/mstream.h>
     #include <wx/rawbmp.h>
 #endif /* __WXGTK2__ */
-#include <GL/glew.h>
+#include <glad/gl.h>
 #define NANOSVG_IMPLEMENTATION
 #include "nanosvg/nanosvg.h"
 #define NANOSVGRAST_IMPLEMENTATION

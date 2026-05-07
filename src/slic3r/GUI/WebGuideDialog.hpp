@@ -22,6 +22,7 @@
 #include "wx/fs_arc.h"
 #include "wx/fs_mem.h"
 #include "wx/stdpaths.h"
+#include <unordered_map>
 #include <wx/frame.h>
 #include <wx/tbarbase.h>
 #include "wx/textctrl.h"
@@ -29,6 +30,8 @@
 #include "GUI_App.hpp"
 #include "libslic3r/PresetBundle.hpp"
 #include "slic3r/Utils/PresetUpdater.hpp"
+
+#include <unordered_map>
 
 #include <nlohmann/json.hpp>
 
@@ -137,6 +140,14 @@ private:
     std::string m_editing_filament_id;
     std::string m_editing_filament_name;
     bool m_resume_custom_filaments{false};
+
+    struct CachedFilamentInfo
+    {
+        int         status{-1};
+        std::string vendor;
+        std::string type;
+    };
+    std::unordered_map<std::string, CachedFilamentInfo> filament_info_cache;
 };
 
 }} // namespace Slic3r::GUI
