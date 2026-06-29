@@ -10,6 +10,7 @@ EVT_LEFT_DOWN(ComboBox::mouseDown)
 EVT_LEFT_DCLICK(ComboBox::mouseDown)
 //EVT_MOUSEWHEEL(ComboBox::mouseWheelMoved)
 EVT_KEY_DOWN(ComboBox::keyDown)
+EVT_CHAR(ComboBox::onChar)
 
 // catch paint events
 END_EVENT_TABLE()
@@ -465,6 +466,22 @@ void ComboBox::keyDown(wxKeyEvent& event)
             event.Skip();
             break;
     }
+}
+
+void ComboBox::onChar(wxKeyEvent &event)
+{
+    if (drop_down && drop.IsSearchEnabled()) {
+        wxChar ch = event.GetUnicodeKey();
+        if (ch != WXK_NONE && (unsigned int) ch >= 32u
+            && !event.ControlDown() && !event.MetaDown()) {
+            if (!event.ShiftDown())
+                ch = (wxChar) wxTolower((wchar_t) ch);
+            drop.appendSearchChar(ch);
+            return;
+        }
+    }
+
+    event.Skip();
 }
 
 void ComboBox::onMove(wxMoveEvent &event)
