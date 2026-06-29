@@ -91,3 +91,16 @@ TEST_CASE("Bambuddy queue payload uses library file and printer", "[BambuddyClie
     REQUIRE(body.find("\"manual_start\":false") != std::string::npos);
     REQUIRE(body.find("\"timelapse\":true") != std::string::npos);
 }
+
+TEST_CASE("Bambuddy custom headers serialize round trip", "[BambuddyClient]")
+{
+    std::map<std::string, std::string> headers;
+    headers.emplace("CF-Access-Client-Id", "client-id");
+    headers.emplace("CF-Access-Client-Secret", "client-secret");
+
+    const std::string serialized = Slic3r::BambuddyClient::serialize_custom_headers(headers);
+    const auto parsed = Slic3r::BambuddyClient::parse_custom_headers(serialized);
+
+    REQUIRE(parsed.at("CF-Access-Client-Id") == "client-id");
+    REQUIRE(parsed.at("CF-Access-Client-Secret") == "client-secret");
+}

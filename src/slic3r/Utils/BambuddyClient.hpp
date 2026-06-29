@@ -9,6 +9,8 @@ namespace boost { namespace filesystem { class path; } }
 
 namespace Slic3r {
 
+class AppConfig;
+
 enum class BambuddyProxyAuthMode { None, PangolinHeaders, PangolinQueryToken, CustomHeaders };
 
 struct BambuddyProxyAuthConfig
@@ -69,6 +71,14 @@ public:
     static std::string build_api_url(const BambuddyConfig &config, const std::string &api_path);
     static std::map<std::string, std::string> build_headers(const BambuddyConfig &config);
     static bool looks_like_html_login(const std::string &body, const std::string &content_type = {});
+    static std::string serialize_custom_headers(const std::map<std::string, std::string> &headers);
+    static std::map<std::string, std::string> parse_custom_headers(const std::string &serialized);
+    static std::string proxy_auth_mode_to_string(BambuddyProxyAuthMode mode);
+    static BambuddyProxyAuthMode proxy_auth_mode_from_string(const std::string &value);
+
+    static BambuddyConfig load_from_app_config(const AppConfig &app_config);
+    static void save_to_app_config(AppConfig &app_config, const BambuddyConfig &config);
+
 
     static bool parse_printers_response(const std::string &body, std::vector<BambuddyPrinter> &printers, std::string &error);
     static bool parse_upload_response(const std::string &body, BambuddyUploadResult &result, std::string &error);

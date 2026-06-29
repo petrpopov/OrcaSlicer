@@ -2,6 +2,8 @@
 
 #include "Http.hpp"
 
+#include "libslic3r/AppConfig.hpp"
+
 #include <algorithm>
 #include <cctype>
 #include <iomanip>
@@ -148,6 +150,99 @@ bool BambuddyClient::looks_like_html_login(const std::string &body, const std::s
 
     const std::string trimmed = lowercase_copy(trim_copy(body));
     return starts_with(trimmed, "<!doctype html") || starts_with(trimmed, "<html");
+}
+
+
+
+std::string BambuddyClient::serialize_custom_headers(const std::map<std::string, std::string> &headers)
+{
+    nlohmann::json json = nlohmann::json::object();
+    for (const auto &[name, value] : headers) {
+        if (!name.empty())
+            json[name] = value;
+    }
+    return json.dump();
+}
+
+std::map<std::string, std::string> BambuddyClient::parse_custom_headers(const std::string &serialized)
+{
+    std::map<std::string, std::string> headers;
+    if (trim_copy(serialized).empty())
+        return headers;
+
+    auto json = nlohmann::json::parse(serialized, nullptr, false);
+    if (json.is_discarded() || !json.is_object())
+        return headers;
+
+    for (auto it = json.begin(); it != json.end(); ++it) {
+        if (it.value().is_string())
+            headers.emplace(it.key(), it.value().get<std::string>());
+    }
+    return headers;
+}
+
+std::string BambuddyClient::proxy_auth_mode_to_string(BambuddyProxyAuthMode mode)
+{
+    switch (mode) {
+    case BambuddyProxyAuthMode::PangolinHeaders:    return "pangolin_headers";
+    case BambuddyProxyAuthMode::PangolinQueryToken: return "pangolin_query";
+    case BambuddyProxyAuthMode::CustomHeaders:      return "custom_headers";
+    case BambuddyProxyAuthMode::None:               return "none";
+    }
+    return "none";
+}
+
+BambuddyProxyAuthMode BambuddyClient::proxy_auth_mode_from_string(const std::string &value)
+{
+    const std::string normalized = lowercase_copy(trim_copy(value));
+    if (normalized == "pangolin_headers")
+        return BambuddyProxyAuthMode::PangolinHeaders;
+    if (normalized == "pangolin_query")
+        return BambuddyProxyAuthMode::PangolinQueryToken;
+    if (normalized == "custom_headers")
+        return BambuddyProxyAuthMode::CustomHeaders;
+    return BambuddyProxyAuthMode::None;
+}
+
+BambuddyConfig BambuddyClient::load_from_app_config(const AppConfig &app_config)
+{
+    constexpr const char *section = "bambuddy";
+    BambuddyConfig config;
+    config.enabled = app_config.get_bool(section, "enabled");
+    config.base_url = app_config.get(section, "base_url");
+    config.api_key = app_config.get(section, "api_key");
+    config.default_printer_name = app_config.get(section, "default_printer_name");
+
+    const std::string default_printer_id = app_config.get(section, "default_printer_id");
+    if (!default_printer_id.empty()) {
+        try {
+            config.default_printer_id = std::stoi(default_printer_id);
+        } catch (...) {
+            config.default_printer_id = 0;
+        }
+    }
+
+    config.proxy_auth.mode = proxy_auth_mode_from_string(app_config.get(section, "proxy_auth_mode"));
+    config.proxy_auth.pangolin_token_id = app_config.get(section, "pangolin_token_id");
+    config.proxy_auth.pangolin_token_secret = app_config.get(section, "pangolin_token_secret");
+    config.proxy_auth.pangolin_query_token = app_config.get(section, "pangolin_query_token");
+    config.proxy_auth.custom_headers = parse_custom_headers(app_config.get(section, "custom_headers_json"));
+    return config;
+}
+
+void BambuddyClient::save_to_app_config(AppConfig &app_config, const BambuddyConfig &config)
+{
+    constexpr const char *section = "bambuddy";
+    app_config.set(section, "enabled", config.enabled);
+    app_config.set(section, "base_url", config.base_url);
+    app_config.set(section, "api_key", config.api_key);
+    app_config.set(section, "default_printer_id", config.default_printer_id > 0 ? std::to_string(config.default_printer_id) : std::string{});
+    app_config.set(section, "default_printer_name", config.default_printer_name);
+    app_config.set(section, "proxy_auth_mode", proxy_auth_mode_to_string(config.proxy_auth.mode));
+    app_config.set(section, "pangolin_token_id", config.proxy_auth.pangolin_token_id);
+    app_config.set(section, "pangolin_token_secret", config.proxy_auth.pangolin_token_secret);
+    app_config.set(section, "pangolin_query_token", config.proxy_auth.pangolin_query_token);
+    app_config.set(section, "custom_headers_json", serialize_custom_headers(config.proxy_auth.custom_headers));
 }
 
 
