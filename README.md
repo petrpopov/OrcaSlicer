@@ -8,7 +8,7 @@
 
 Форк OrcaSlicer для тех, кто хочет продолжать использовать любимый слайсер с принтерами Bambu Lab через **Bambu Connect**.
 
-[Инструкция по установке и первой печати (RU)](doc/peter-edition/wiki/installation-and-first-print.ru.md) · [Installation and first print (EN)](doc/peter-edition/wiki/installation-and-first-print.en.md) · [Релиз v2.3.2-pe.6](doc/peter-edition/releases/v2.3.2-pe.6.md)
+[Инструкция по установке и первой печати (RU)](doc/peter-edition/wiki/installation-and-first-print.ru.md) · [Installation and first print (EN)](doc/peter-edition/wiki/installation-and-first-print.en.md)
 
 </div>
 
@@ -69,7 +69,7 @@ xattr -dr com.apple.quarantine "/Applications/OrcaSlicerPE.app"
 ## Скачать
 
 - Релизы этого форка: [GitHub Releases](https://github.com/petrpopov/OrcaSlicer/releases)
-- Текущий релизный текст: [v2.3.2-pe.6](doc/peter-edition/releases/v2.3.2-pe.6.md)
+- Текущая версия форка: 2.4.1
 - Подробная wiki-страница: [Установка и первая печать (RU)](doc/peter-edition/wiki/installation-and-first-print.ru.md)
 
 ## Лицензия и атрибуция

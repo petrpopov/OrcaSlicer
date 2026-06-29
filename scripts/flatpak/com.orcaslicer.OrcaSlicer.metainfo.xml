@@ -24,11 +24,11 @@
     </recommends>
     <screenshots>
         <screenshot type="default">
-            <image>https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/v2.3.2/scripts/flatpak/images/1.png</image>
+            <image>https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/v2.4.1/scripts/flatpak/images/1.png</image>
             <caption>A model ready to be sliced on a buildplate.</caption>
         </screenshot>
         <screenshot>
-            <image>https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/v2.3.2/scripts/flatpak/images/2.png</image>
+            <image>https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/v2.4.1/scripts/flatpak/images/2.png</image>
             <caption>A calibration test ready to be printed out.</caption>
         </screenshot>
     </screenshots>
@@ -45,6 +45,12 @@
         <color type="primary" scheme_preference="dark">#00695C</color>
     </branding>
     <releases>
+        <release version="2.4.1" date="2026-06-29">
+            <url type="details">https://github.com/petrpopov/OrcaSlicer/releases/tag/v2.4.1</url>
+            <description>
+                <p>See the release page for detailed changelog.</p>
+            </description>
+        </release>
         <release version="2.3.2" date="2025-03-23">
             <url type="details">https://github.com/OrcaSlicer/OrcaSlicer/releases/tag/v2.3.2</url>
             <description>

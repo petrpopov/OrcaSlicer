@@ -93,5 +93,5 @@ Since the first fork release, OrcaSlicer PE has added and refined:
 ## Useful links
 
 - Releases: [GitHub Releases](https://github.com/petrpopov/OrcaSlicer/releases)
-- `v2.3.2-pe.6` release notes: [release notes](https://github.com/petrpopov/OrcaSlicer/blob/main/doc/peter-edition/releases/v2.3.2-pe.6.md)
+- `v2.4.1` release notes: [release notes](https://github.com/petrpopov/OrcaSlicer/blob/main/doc/peter-edition/releases/v2.4.1.md)
 - Upstream project: [OrcaSlicer](https://github.com/OrcaSlicer/OrcaSlicer)

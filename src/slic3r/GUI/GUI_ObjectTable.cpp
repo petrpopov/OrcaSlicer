@@ -561,14 +561,23 @@ wxString GridCellSupportEditor::ms_stringValues[2] = { wxT(""), wxT("") };
 
 void GridCellSupportEditor::DoActivate(int row, int col, wxGrid* grid)
 {
-    ObjectGrid* local_table = dynamic_cast<ObjectGrid*>(grid);
     wxGridBlocks cell_array = grid->GetSelectedBlocks();
-   
-    auto left_col = cell_array.begin()->GetLeftCol();
-    auto right_col = cell_array.begin()->GetRightCol();
-    auto top_row = cell_array.begin()->GetTopRow();
-    auto bottom_row = cell_array.begin()->GetBottomRow();
-  
+    auto iter = cell_array.begin();
+
+    int left_col, right_col, top_row, bottom_row;
+    if (iter == cell_array.end()) {
+        // wxWidgets 3.3.x returns an empty range when nothing is selected;
+        // fall back to the cell that triggered activation so the single-cell
+        // branch below handles it.
+        left_col = right_col = col;
+        top_row  = bottom_row = row;
+    } else {
+        left_col   = iter->GetLeftCol();
+        right_col  = iter->GetRightCol();
+        top_row    = iter->GetTopRow();
+        bottom_row = iter->GetBottomRow();
+    }
+
 	if ((left_col == right_col) &&
 		(top_row == bottom_row)) {
 		wxGridCellBoolEditor::DoActivate(row, col, grid);
@@ -1896,7 +1905,8 @@ void ObjectGridTable::init_cols(ObjectGrid *object_grid)
     //reset icon for Bed Adhesion
     col = new ObjectGridCol(coEnum, "brim_type_reset", L("Support"), true, true, false, false, wxALIGN_LEFT);
     m_col_data.push_back(col);
-
+    
+    // todo mutli_extruders:
     //object/volume speed
     col       = new ObjectGridCol(coFloat, "outer_wall_speed", L("Speed"), false, false, true, true, wxALIGN_LEFT);
     col->size = object_grid->GetTextExtent(L("Outer wall speed")).x;

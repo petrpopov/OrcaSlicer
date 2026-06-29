@@ -1,0 +1,12 @@
+# codebase-memory-mcp: keep graph focused on project-owned source/config.
+# Exclude vendored snapshots, generated/heavy data, web bundles, and third-party test/runtime blobs.
+deps/
+deps_src/
+build/
+cmake-build-*/
+resources/
+localization/
+doc/
+SoftFever_doc/
+tests/catch2/
+src/glad/

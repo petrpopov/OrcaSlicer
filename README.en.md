@@ -8,7 +8,7 @@
 
 An OrcaSlicer fork for users who want to keep using their favorite slicer with Bambu Lab printers via **Bambu Connect**.
 
-[Installation and first print (EN)](doc/peter-edition/wiki/installation-and-first-print.en.md) · [Установка и первая печать (RU)](doc/peter-edition/wiki/installation-and-first-print.ru.md) · [Release v2.3.2-pe.6](doc/peter-edition/releases/v2.3.2-pe.6.md)
+[Installation and first print (EN)](doc/peter-edition/wiki/installation-and-first-print.en.md) · [Установка и первая печать (RU)](doc/peter-edition/wiki/installation-and-first-print.ru.md)
 
 </div>
 
@@ -69,7 +69,7 @@ Build flow is the same as in upstream OrcaSlicer.
 ## Download
 
 - Fork releases: [GitHub Releases](https://github.com/petrpopov/OrcaSlicer/releases)
-- Current release text: [v2.3.2-pe.6](doc/peter-edition/releases/v2.3.2-pe.6.md)
+- Current fork version: 2.4.1
 - Detailed wiki page: [Installation and first print (EN)](doc/peter-edition/wiki/installation-and-first-print.en.md)
 
 ## License and attribution

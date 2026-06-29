@@ -19,7 +19,7 @@ on:
         default: false
         type: boolean
       release_tag:
-        description: "Release tag name when publish_release=true (example: 2.3.2-pe.7 or v2.3.2-pe.7)"
+        description: "Release tag name when publish_release=true (example: 2.4.1 or v2.4.1)"
         required: false
         default: ""
         type: string

@@ -133,11 +133,14 @@ public:
     bool selectHoveredItemForSearch();
     // Количество видимых элементов (с учётом фильтра)
     size_t visibleCount() const;
+    void Popup(wxWindow *focus = nullptr) override;
 
 protected:
     void Dismiss() override;
 
     void OnDismiss() override;
+
+    bool ShouldDismissOnTopWindowDeactivate() override;
 
 private:
     void paintEvent(wxPaintEvent& evt);

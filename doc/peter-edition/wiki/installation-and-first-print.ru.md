@@ -93,5 +93,5 @@ xattr -dr com.apple.quarantine "/Applications/OrcaSlicerPE.app"
 ## Полезные ссылки
 
 - Релизы: [GitHub Releases](https://github.com/petrpopov/OrcaSlicer/releases)
-- Текст релиза `v2.3.2-pe.6`: [release notes](https://github.com/petrpopov/OrcaSlicer/blob/main/doc/peter-edition/releases/v2.3.2-pe.6.md)
+- Текст релиза `v2.4.1`: [release notes](https://github.com/petrpopov/OrcaSlicer/blob/main/doc/peter-edition/releases/v2.4.1.md)
 - Апстрим-проект: [OrcaSlicer](https://github.com/OrcaSlicer/OrcaSlicer)
