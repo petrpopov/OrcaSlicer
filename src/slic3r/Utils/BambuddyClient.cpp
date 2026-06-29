@@ -1,9 +1,16 @@
 #include "BambuddyClient.hpp"
 
+#include "Http.hpp"
+
 #include <algorithm>
 #include <cctype>
 #include <iomanip>
 #include <sstream>
+
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
+
+#include <nlohmann/json.hpp>
 
 namespace Slic3r {
 namespace {
@@ -30,6 +37,26 @@ bool ends_with(const std::string &value, const std::string &suffix)
 bool starts_with(const std::string &value, const std::string &prefix)
 {
     return value.size() >= prefix.size() && value.compare(0, prefix.size(), prefix) == 0;
+}
+
+
+void apply_headers(Http &http, const BambuddyConfig &config)
+{
+    for (const auto &[name, value] : BambuddyClient::build_headers(config))
+        http.header(name, value);
+}
+
+std::string http_error_message(const std::string &body, const std::string &error, unsigned status)
+{
+    if (BambuddyClient::looks_like_html_login(body))
+        return "Reverse proxy authentication failed; check Pangolin/custom auth settings.";
+    if (status == 401 || status == 403)
+        return "Bambuddy rejected the API key or permissions.";
+    if (!error.empty())
+        return error;
+    if (status != 0)
+        return "HTTP " + std::to_string(status) + ": " + body;
+    return body.empty() ? std::string("Bambuddy request failed.") : body;
 }
 
 std::string percent_encode(const std::string &value)
@@ -121,6 +148,183 @@ bool BambuddyClient::looks_like_html_login(const std::string &body, const std::s
 
     const std::string trimmed = lowercase_copy(trim_copy(body));
     return starts_with(trimmed, "<!doctype html") || starts_with(trimmed, "<html");
+}
+
+
+bool BambuddyClient::parse_printers_response(const std::string &body, std::vector<BambuddyPrinter> &printers, std::string &error)
+{
+    printers.clear();
+    auto json = nlohmann::json::parse(body, nullptr, false);
+    if (json.is_discarded() || !json.is_array()) {
+        error = "Bambuddy returned an invalid printer list.";
+        return false;
+    }
+
+    for (const auto &item : json) {
+        if (!item.is_object() || !item.contains("id"))
+            continue;
+
+        BambuddyPrinter printer;
+        printer.id = item.value("id", 0);
+        printer.name = item.value("name", std::string{});
+        printer.model = item.value("model", std::string{});
+        printer.is_active = item.value("is_active", item.value("active", true));
+        if (printer.name.empty())
+            printer.name = "Printer " + std::to_string(printer.id);
+        printers.push_back(std::move(printer));
+    }
+
+    return true;
+}
+
+bool BambuddyClient::parse_upload_response(const std::string &body, BambuddyUploadResult &result, std::string &error)
+{
+    result = BambuddyUploadResult{};
+    auto json = nlohmann::json::parse(body, nullptr, false);
+    if (json.is_discarded() || !json.is_object()) {
+        error = "Bambuddy returned an invalid upload response.";
+        return false;
+    }
+
+    result.library_file_id = json.value("id", 0);
+    result.filename = json.value("filename", std::string{});
+    if (result.library_file_id <= 0) {
+        error = "Bambuddy upload response did not contain a library file id.";
+        return false;
+    }
+
+    return true;
+}
+
+std::string BambuddyClient::build_queue_body(int library_file_id, int printer_id, const BambuddyPrintOptions &options)
+{
+    nlohmann::json body;
+    body["library_file_id"] = library_file_id;
+    body["printer_id"] = printer_id;
+    body["insert_at_top"] = options.insert_at_top;
+    body["manual_start"] = options.manual_start;
+    body["bed_levelling"] = options.bed_levelling;
+    body["flow_cali"] = options.flow_cali;
+    body["vibration_cali"] = options.vibration_cali;
+    body["layer_inspect"] = options.layer_inspect;
+    body["timelapse"] = options.timelapse;
+    body["use_ams"] = options.use_ams;
+    return body.dump();
+}
+
+
+BambuddyClient::BambuddyClient(BambuddyConfig config) : m_config(std::move(config)) {}
+
+bool BambuddyClient::test_connection(std::string &error) const
+{
+    std::vector<BambuddyPrinter> printers;
+    return list_printers(printers, error);
+}
+
+bool BambuddyClient::list_printers(std::vector<BambuddyPrinter> &printers, std::string &error) const
+{
+    bool        success = false;
+    std::string response_body;
+    std::string url = build_api_url(m_config, "/printers/");
+
+    auto http = Http::get(url);
+    apply_headers(http, m_config);
+    http.on_complete([&](std::string body, unsigned) {
+            response_body = std::move(body);
+            if (looks_like_html_login(response_body)) {
+                error = "Reverse proxy authentication failed; check Pangolin/custom auth settings.";
+                success = false;
+                return;
+            }
+            success = parse_printers_response(response_body, printers, error);
+        })
+        .on_error([&](std::string body, std::string http_error, unsigned status) {
+            error = http_error_message(body, http_error, status);
+            success = false;
+        })
+        .perform_sync();
+
+    return success;
+}
+
+bool BambuddyClient::upload_file(const boost::filesystem::path &path, BambuddyUploadResult &result, std::string &error) const
+{
+    result = BambuddyUploadResult{};
+    if (path.empty() || !boost::filesystem::exists(path)) {
+        error = "Print file does not exist.";
+        return false;
+    }
+
+    const std::string filename = path.filename().string();
+    const std::string lower_filename = lowercase_copy(filename);
+    if (!ends_with(lower_filename, ".gcode.3mf")) {
+        error = "Bambuddy requires a sliced .gcode.3mf file.";
+        return false;
+    }
+
+    bool        success = false;
+    std::string url = build_api_url(m_config, "/library/files");
+
+    auto http = Http::post(url);
+    apply_headers(http, m_config);
+    http.form_add_file("file", path, filename)
+        .on_complete([&](std::string body, unsigned) {
+            if (looks_like_html_login(body)) {
+                error = "Reverse proxy authentication failed; check Pangolin/custom auth settings.";
+                success = false;
+                return;
+            }
+            success = parse_upload_response(body, result, error);
+        })
+        .on_error([&](std::string body, std::string http_error, unsigned status) {
+            error = http_error_message(body, http_error, status);
+            success = false;
+        })
+        .perform_sync();
+
+    return success;
+}
+
+bool BambuddyClient::enqueue_print(int library_file_id, int printer_id, const BambuddyPrintOptions &options, BambuddyQueueResult &result,
+                                   std::string &error) const
+{
+    result = BambuddyQueueResult{};
+    if (library_file_id <= 0) {
+        error = "Missing Bambuddy library file id.";
+        return false;
+    }
+    if (printer_id <= 0) {
+        error = "Missing Bambuddy printer id.";
+        return false;
+    }
+
+    bool        success = false;
+    std::string url = build_api_url(m_config, "/queue/");
+    std::string body = build_queue_body(library_file_id, printer_id, options);
+
+    auto http = Http::post(url);
+    apply_headers(http, m_config);
+    http.header("Content-Type", "application/json")
+        .set_post_body(body)
+        .on_complete([&](std::string response_body, unsigned) {
+            if (looks_like_html_login(response_body)) {
+                error = "Reverse proxy authentication failed; check Pangolin/custom auth settings.";
+                success = false;
+                return;
+            }
+
+            auto json = nlohmann::json::parse(response_body, nullptr, false);
+            if (!json.is_discarded() && json.is_object())
+                result.queue_item_id = json.value("id", 0);
+            success = true;
+        })
+        .on_error([&](std::string response_body, std::string http_error, unsigned status) {
+            error = http_error_message(response_body, http_error, status);
+            success = false;
+        })
+        .perform_sync();
+
+    return success;
 }
 
 } // namespace Slic3r

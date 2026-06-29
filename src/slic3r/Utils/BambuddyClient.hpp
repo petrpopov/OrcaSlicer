@@ -70,6 +70,10 @@ public:
     static std::map<std::string, std::string> build_headers(const BambuddyConfig &config);
     static bool looks_like_html_login(const std::string &body, const std::string &content_type = {});
 
+    static bool parse_printers_response(const std::string &body, std::vector<BambuddyPrinter> &printers, std::string &error);
+    static bool parse_upload_response(const std::string &body, BambuddyUploadResult &result, std::string &error);
+    static std::string build_queue_body(int library_file_id, int printer_id, const BambuddyPrintOptions &options);
+
     bool test_connection(std::string &error) const;
     bool list_printers(std::vector<BambuddyPrinter> &printers, std::string &error) const;
     bool upload_file(const boost::filesystem::path &path, BambuddyUploadResult &result, std::string &error) const;
