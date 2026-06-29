@@ -93,6 +93,13 @@ BambuddySettingsDialog::BambuddySettingsDialog(wxWindow *parent)
     wxGetApp().UpdateDlgDarkUI(this);
 }
 
+void BambuddySettingsDialog::on_dpi_changed(const wxRect &suggested_rect)
+{
+    SetSize(suggested_rect);
+    Layout();
+    Refresh();
+}
+
 void BambuddySettingsDialog::build_ui()
 {
     SetBackgroundColour(*wxWHITE);

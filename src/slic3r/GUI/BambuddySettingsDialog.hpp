@@ -20,6 +20,7 @@ public:
     explicit BambuddySettingsDialog(wxWindow *parent);
 
     const BambuddyConfig &config() const { return m_config; }
+    void on_dpi_changed(const wxRect &suggested_rect) override;
 
 private:
     void build_ui();
