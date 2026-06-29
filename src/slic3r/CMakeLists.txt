@@ -46,6 +46,8 @@ set(SLIC3R_GUI_SOURCES
     GUI/BBLStatusBarSend.hpp
     GUI/BBLTopbar.cpp
     GUI/BBLTopbar.hpp
+    GUI/BambuddySettingsDialog.cpp
+    GUI/BambuddySettingsDialog.hpp
     GUI/BedShapeDialog.cpp
     GUI/BedShapeDialog.hpp
     GUI/BindDialog.cpp
