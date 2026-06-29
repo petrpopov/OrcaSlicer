@@ -579,6 +579,8 @@ set(SLIC3R_GUI_SOURCES
     Utils/ASCIIFolding.hpp
     Utils/AstroBox.cpp
     Utils/AstroBox.hpp
+    Utils/BambuddyClient.cpp
+    Utils/BambuddyClient.hpp
     Utils/bambu_networking.hpp
     Utils/Bonjour.cpp
     Utils/Bonjour.hpp

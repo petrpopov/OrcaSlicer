@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include <boost/filesystem/path.hpp>
+namespace boost { namespace filesystem { class path; } }
 
 namespace Slic3r {
 
