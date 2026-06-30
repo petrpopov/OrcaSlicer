@@ -356,6 +356,7 @@ protected:
     wxBoxSizer*                         m_change_filament_times_sizer{ nullptr };
     wxBoxSizer*                         m_sizer_action_buttons{ nullptr };
     Button*                             m_button_bambu_connect{ nullptr };
+    Button*                             m_button_bambuddy{ nullptr };
     Button*                             m_button_ensure{ nullptr };
     wxStaticBitmap *                    m_rename_button{nullptr};
     wxStaticBitmap*                     m_staticbitmap{ nullptr };
@@ -467,6 +468,7 @@ public:
     void show_errors(wxString& info);
     void on_ok_btn(wxCommandEvent& event);
     void on_bambu_connect_btn(wxCommandEvent& event);
+    void on_bambuddy_btn(wxCommandEvent& event);
     void Enable_Auto_Refill(bool enable);
     void on_send_print();
     void clear_ip_address_config(wxCommandEvent& e);
@@ -536,6 +538,7 @@ private:
     // enbale or disable external change assist
     bool is_enable_external_change_assist(std::vector<FilamentInfo>& ams_mapping_result);
     void update_bambu_connect_button_visibility();
+    void update_bambuddy_button_visibility();
     std::string build_bambu_connect_uri(const std::string& file_path) const;
     bool launch_bambu_connect_uri(const std::string& uri) const;
 };

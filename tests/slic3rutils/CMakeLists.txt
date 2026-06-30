@@ -3,6 +3,7 @@ add_executable(${_TEST_NAME}_tests
     ${_TEST_NAME}_tests_main.cpp
     test_download_path_utils.cpp
     test_update_version_parsing.cpp
+    test_bambuddy_client.cpp
     )
 
 if (MSVC)
