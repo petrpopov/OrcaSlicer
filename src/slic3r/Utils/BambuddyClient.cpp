@@ -140,19 +140,6 @@ std::string BambuddyClient::build_page_url(const BambuddyConfig &config, const s
     else
         url += "/" + page_path;
 
-    std::string browser_query_token;
-    if (config.proxy_auth.mode == BambuddyProxyAuthMode::PangolinQueryToken) {
-        browser_query_token = config.proxy_auth.pangolin_query_token;
-    } else if (config.proxy_auth.mode == BambuddyProxyAuthMode::PangolinHeaders &&
-               !config.proxy_auth.pangolin_token_id.empty() && !config.proxy_auth.pangolin_token_secret.empty()) {
-        browser_query_token = config.proxy_auth.pangolin_token_id + "." + config.proxy_auth.pangolin_token_secret;
-    }
-
-    if (!browser_query_token.empty()) {
-        if (!query.empty())
-            query += '&';
-        query += "p_token=" + percent_encode(browser_query_token);
-    }
 
     if (!query.empty())
         url += "?" + query;

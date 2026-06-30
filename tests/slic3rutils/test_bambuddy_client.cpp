@@ -34,16 +34,15 @@ TEST_CASE("Bambuddy page URL joins base and page with Pangolin query token", "[B
     cfg.proxy_auth.pangolin_query_token = "id.token";
 
     const std::string url = Slic3r::BambuddyClient::build_page_url(cfg, "/queue");
-    REQUIRE(url.find("https://bambuddy.ezheg.xyz/queue?") == 0);
-    REQUIRE(url.find("foo=bar") != std::string::npos);
-    REQUIRE(url.find("p_token=id.token") != std::string::npos);
+    REQUIRE(url == "https://bambuddy.ezheg.xyz/queue?foo=bar");
+    REQUIRE(url.find("p_token=") == std::string::npos);
 
     cfg.base_url = "https://bambuddy.ezheg.xyz/";
     cfg.proxy_auth.mode = Slic3r::BambuddyProxyAuthMode::PangolinHeaders;
     cfg.proxy_auth.pangolin_token_id = "id";
     cfg.proxy_auth.pangolin_token_secret = "secret";
     REQUIRE(Slic3r::BambuddyClient::build_page_url(cfg, "queue") ==
-            "https://bambuddy.ezheg.xyz/queue?p_token=id.secret");
+            "https://bambuddy.ezheg.xyz/queue");
 }
 
 TEST_CASE("Bambuddy headers include API key and Pangolin header token", "[BambuddyClient]")
