@@ -1,5 +1,5 @@
-#include "SelectMachine.hpp"
 #include "I18N.hpp"
+#include "SelectMachine.hpp"
 
 #include "libslic3r/Utils.hpp"
 #include "libslic3r/Thread.hpp"
@@ -30,6 +30,7 @@
 
 #include <wx/progdlg.h>
 #include <wx/clipbrd.h>
+#include <wx/choice.h>
 #include <wx/dcgraph.h>
 #include <wx/mstream.h>
 #include <miniz.h>
@@ -40,9 +41,11 @@
 #include <thread>
 #include "Plater.hpp"
 #include "Notebook.hpp"
+#include "BambuddySettingsDialog.hpp"
 #include "BitmapCache.hpp"
 #include "BindDialog.hpp"
 #include "slic3r/Utils/Http.hpp"
+#include "slic3r/Utils/BambuddyClient.hpp"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -75,6 +78,21 @@ std::string to_lower_ascii(std::string value)
 {
     std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     return value;
+}
+
+wxString format_bambuddy_printer_label(const BambuddyPrinter &printer)
+{
+    wxString label = printer.name.empty() ? wxString::Format("#%d", printer.id) : from_u8(printer.name);
+    if (!printer.model.empty())
+        label += _L(" — ") + from_u8(printer.model);
+    if (!printer.is_active)
+        label += _L(" (inactive)");
+    return label;
+}
+
+wxString format_bambuddy_printer_label(const BambuddyPrinterChoice &printer)
+{
+    return printer.name.empty() ? wxString::Format("#%d", printer.id) : from_u8(printer.name);
 }
 
 bool is_bambu_connect_process_name(const std::string& process_name)
@@ -667,15 +685,49 @@ SelectMachineDialog::SelectMachineDialog(Plater *plater)
     m_button_bambu_connect->SetStyle(ButtonStyle::Regular, ButtonType::Choice);
     m_button_bambu_connect->Bind(wxEVT_BUTTON, &SelectMachineDialog::on_bambu_connect_btn, this);
 
+    m_button_bambuddy = new Button(m_panel_prepare, _L("Send to Bambuddy"));
+    m_button_bambuddy->SetStyle(ButtonStyle::Regular, ButtonType::Choice);
+    m_button_bambuddy->Bind(wxEVT_BUTTON, &SelectMachineDialog::on_bambuddy_btn, this);
+
+    m_button_print_bambuddy = new Button(m_panel_prepare, _L("Print in Bambuddy"));
+    m_button_print_bambuddy->SetStyle(ButtonStyle::Regular, ButtonType::Choice);
+    m_button_print_bambuddy->Bind(wxEVT_BUTTON, &SelectMachineDialog::on_print_bambuddy_btn, this);
+
+    m_button_bambuddy_settings = new Button(m_panel_prepare, _L("⚙"));
+    m_button_bambuddy_settings->SetStyle(ButtonStyle::Regular, ButtonType::Choice);
+    m_button_bambuddy_settings->SetToolTip(_L("Bambuddy settings"));
+    m_button_bambuddy_settings->Bind(wxEVT_BUTTON, &SelectMachineDialog::on_bambuddy_settings_btn, this);
+
     m_button_ensure = new Button(m_panel_prepare, _L("Send"));
     m_button_ensure->SetStyle(ButtonStyle::Confirm, ButtonType::Choice);
     m_button_ensure->Bind(wxEVT_BUTTON, &SelectMachineDialog::on_ok_btn, this);
 
+    m_panel_bambuddy_controls = new wxPanel(m_panel_prepare, wxID_ANY);
+    auto sizer_bambuddy_controls = new wxBoxSizer(wxHORIZONTAL);
+    auto bambuddy_printer_label = new wxStaticText(m_panel_bambuddy_controls, wxID_ANY, _L("Bambuddy printer"));
+    m_choice_bambuddy_printer = new wxChoice(m_panel_bambuddy_controls, wxID_ANY, wxDefaultPosition, wxSize(FromDIP(250), -1));
+    sizer_bambuddy_controls->Add(bambuddy_printer_label, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(8));
+    sizer_bambuddy_controls->Add(m_choice_bambuddy_printer, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(16));
+    m_panel_bambuddy_controls->SetSizer(sizer_bambuddy_controls);
+
+    m_panel_bambuddy_links = new wxPanel(m_panel_bambuddy_controls, wxID_ANY);
+    auto sizer_bambuddy_links = new wxBoxSizer(wxHORIZONTAL);
+    m_link_bambuddy_archives = new wxHyperlinkCtrl(m_panel_bambuddy_links, wxID_ANY, _L("Archives"), wxEmptyString);
+    m_link_bambuddy_queue = new wxHyperlinkCtrl(m_panel_bambuddy_links, wxID_ANY, _L("Print Queue"), wxEmptyString);
+    sizer_bambuddy_links->Add(m_link_bambuddy_archives, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(16));
+    sizer_bambuddy_links->Add(m_link_bambuddy_queue, 0, wxALIGN_CENTER_VERTICAL);
+    m_panel_bambuddy_links->SetSizer(sizer_bambuddy_links);
+    sizer_bambuddy_controls->Add(m_panel_bambuddy_links, 0, wxALIGN_CENTER_VERTICAL);
+
     m_sizer_action_buttons = new wxBoxSizer(wxHORIZONTAL);
     m_sizer_action_buttons->Add(m_button_bambu_connect, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(8));
+    m_sizer_action_buttons->Add(m_button_bambuddy, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(8));
+    m_sizer_action_buttons->Add(m_button_print_bambuddy, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(8));
+    m_sizer_action_buttons->Add(m_button_bambuddy_settings, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(8));
     m_sizer_action_buttons->Add(m_button_ensure, 0, wxALIGN_CENTER_VERTICAL);
 
     m_sizer_pcont->Add(0, 0, 1, wxEXPAND, 0);
+    m_sizer_pcont->Add(m_panel_bambuddy_controls, 0, wxALIGN_CENTER | wxBOTTOM, FromDIP(6));
     m_sizer_pcont->Add(m_sizer_action_buttons, 0, wxALIGN_CENTER, 0);
 
     m_sizer_prepare->Add(0, 0, 1, wxTOP, FromDIP(12));
@@ -683,6 +735,8 @@ SelectMachineDialog::SelectMachineDialog(Plater *plater)
 
     m_panel_prepare->SetSizer(m_sizer_prepare);
     update_bambu_connect_button_visibility();
+    update_bambuddy_controls();
+    refresh_bambuddy_printers(false);
     m_panel_prepare->Layout();
     m_simplebook->AddPage(m_panel_prepare, wxEmptyString, true);
 
@@ -965,6 +1019,7 @@ void SelectMachineDialog::update_select_layout(MachineObject *obj)
 void SelectMachineDialog::prepare_mode(bool refresh_button)
 {
     update_bambu_connect_button_visibility();
+    update_bambuddy_button_visibility();
     Enable_Auto_Refill(true);
     show_print_failed_info(false);
 
@@ -2246,6 +2301,12 @@ void SelectMachineDialog::on_bambu_connect_btn(wxCommandEvent &)
     Enable_Send_Button(false);
     if (m_button_bambu_connect)
         m_button_bambu_connect->Disable();
+    if (m_button_bambuddy)
+        m_button_bambuddy->Disable();
+    if (m_button_print_bambuddy)
+        m_button_print_bambuddy->Disable();
+    if (m_button_bambuddy_settings)
+        m_button_bambuddy_settings->Disable();
 
     const int result = m_plater->send_gcode(m_print_plate_idx, nullptr);
     if (result < 0) {
@@ -2253,6 +2314,7 @@ void SelectMachineDialog::on_bambu_connect_btn(wxCommandEvent &)
         show_error(this, msg, false);
         Enable_Send_Button(true);
         update_bambu_connect_button_visibility();
+        update_bambuddy_button_visibility();
         return;
     }
 
@@ -2262,6 +2324,7 @@ void SelectMachineDialog::on_bambu_connect_btn(wxCommandEvent &)
         show_error(this, _L("Failed to prepare the print file for Bambu Connect."), false);
         Enable_Send_Button(true);
         update_bambu_connect_button_visibility();
+        update_bambuddy_button_visibility();
         return;
     }
 
@@ -2278,6 +2341,7 @@ void SelectMachineDialog::on_bambu_connect_btn(wxCommandEvent &)
         BOOST_LOG_TRIVIAL(info) << "bambu_connect: process detected, closing send print dialog";
         Enable_Send_Button(true);
         update_bambu_connect_button_visibility();
+        update_bambuddy_button_visibility();
         if (IsModal())
             EndModal(wxID_OK);
         else
@@ -2289,6 +2353,225 @@ void SelectMachineDialog::on_bambu_connect_btn(wxCommandEvent &)
 
     Enable_Send_Button(true);
     update_bambu_connect_button_visibility();
+    update_bambuddy_button_visibility();
+}
+
+void SelectMachineDialog::on_bambuddy_btn(wxCommandEvent &)
+{
+    send_to_bambuddy(false);
+}
+
+void SelectMachineDialog::on_print_bambuddy_btn(wxCommandEvent &)
+{
+    send_to_bambuddy(true);
+}
+
+void SelectMachineDialog::on_bambuddy_settings_btn(wxCommandEvent &)
+{
+    BambuddySettingsDialog dialog(this);
+    if (dialog.ShowModal() == wxID_OK)
+        refresh_bambuddy_printers(true);
+    update_bambuddy_controls();
+}
+
+int SelectMachineDialog::selected_bambuddy_printer_id(const BambuddyConfig &config, std::string *name) const
+{
+    if (name)
+        name->clear();
+
+    if (m_choice_bambuddy_printer && m_choice_bambuddy_printer->GetSelection() != wxNOT_FOUND) {
+        const int selection = m_choice_bambuddy_printer->GetSelection();
+        if (selection >= 0 && static_cast<size_t>(selection) < m_bambuddy_printers.size()) {
+            const BambuddyPrinterChoice &printer = m_bambuddy_printers[selection];
+            if (name)
+                *name = printer.name;
+            return printer.id;
+        }
+    }
+
+    if (name)
+        *name = config.default_printer_name;
+    return config.default_printer_id;
+}
+
+void SelectMachineDialog::refresh_bambuddy_printers(bool show_errors)
+{
+    if (!wxGetApp().app_config || !m_choice_bambuddy_printer)
+        return;
+
+    BambuddyConfig config = BambuddyClient::load_from_app_config(*wxGetApp().app_config);
+    m_bambuddy_printers.clear();
+    m_choice_bambuddy_printer->Clear();
+
+    if (!config.enabled || config.base_url.empty()) {
+        update_bambuddy_controls();
+        return;
+    }
+
+    BambuddyClient client(config);
+    std::vector<BambuddyPrinter> printers;
+    std::string error;
+    if (client.list_printers(printers, error)) {
+        for (const BambuddyPrinter &printer : printers) {
+            BambuddyPrinterChoice choice;
+            choice.id = printer.id;
+            choice.name = printer.name;
+            m_bambuddy_printers.push_back(std::move(choice));
+            m_choice_bambuddy_printer->Append(format_bambuddy_printer_label(printer));
+        }
+    } else if (show_errors) {
+        show_error(this, from_u8(error), false);
+    }
+
+    if (m_bambuddy_printers.empty() && config.default_printer_id > 0) {
+        BambuddyPrinterChoice printer;
+        printer.id = config.default_printer_id;
+        printer.name = config.default_printer_name;
+        m_bambuddy_printers.push_back(std::move(printer));
+        m_choice_bambuddy_printer->Append(format_bambuddy_printer_label(m_bambuddy_printers.front()));
+    }
+
+    int selection = wxNOT_FOUND;
+    for (size_t i = 0; i < m_bambuddy_printers.size(); ++i) {
+        if (m_bambuddy_printers[i].id == config.default_printer_id)
+            selection = static_cast<int>(i);
+    }
+    if (selection == wxNOT_FOUND && !m_bambuddy_printers.empty())
+        selection = 0;
+    if (selection != wxNOT_FOUND)
+        m_choice_bambuddy_printer->SetSelection(selection);
+
+    update_bambuddy_controls();
+}
+
+void SelectMachineDialog::send_to_bambuddy(bool queue_print)
+{
+    if (m_print_type != PrintFromType::FROM_NORMAL || m_plater == nullptr)
+        return;
+
+    if (!wxGetApp().app_config) {
+        show_error(this, _L("Unable to load Bambuddy settings."), false);
+        return;
+    }
+
+    BambuddyConfig config = BambuddyClient::load_from_app_config(*wxGetApp().app_config);
+    std::string selected_printer_name;
+    int selected_printer_id = selected_bambuddy_printer_id(config, &selected_printer_name);
+    if (!config.enabled || config.base_url.empty() || (queue_print && selected_printer_id <= 0)) {
+        BambuddySettingsDialog dialog(this);
+        if (dialog.ShowModal() != wxID_OK)
+            return;
+        config = dialog.config();
+        refresh_bambuddy_printers(false);
+        selected_printer_id = selected_bambuddy_printer_id(config, &selected_printer_name);
+    }
+
+    if (!config.enabled) {
+        show_error(this, _L("Enable Bambuddy in settings before using Bambuddy."), false);
+        return;
+    }
+    if (config.base_url.empty() || (queue_print && selected_printer_id <= 0)) {
+        show_error(this, queue_print ? _L("Please configure Bambuddy URL and printer before printing.") :
+                                      _L("Please configure Bambuddy URL before uploading."), false);
+        return;
+    }
+
+    Enable_Send_Button(false);
+    if (m_button_bambu_connect)
+        m_button_bambu_connect->Disable();
+    if (m_button_bambuddy)
+        m_button_bambuddy->Disable();
+    if (m_button_print_bambuddy)
+        m_button_print_bambuddy->Disable();
+    if (m_button_bambuddy_settings)
+        m_button_bambuddy_settings->Disable();
+
+    const auto restore_buttons = [this]() {
+        prepare_mode(true);
+        update_bambuddy_controls();
+    };
+
+    m_status_bar->reset();
+    m_status_bar->set_prog_block();
+    m_status_bar->hide_cancel_button();
+    sending_mode();
+
+    const int result = m_plater->send_gcode(m_print_plate_idx, [this](int, int, int, bool& cancel) {
+        bool cancelled = false;
+        wxString msg = _L("Preparing print job for Bambuddy");
+        m_status_bar->update_status(msg, cancelled, 10, true);
+        cancel = cancelled;
+    });
+    if (result < 0) {
+        show_error(this, _L("Abnormal print file data. Please slice again"), false);
+        restore_buttons();
+        return;
+    }
+
+    PrintPrepareData print_data;
+    m_plater->get_print_job_data(&print_data);
+    if (print_data._3mf_path.empty() || !boost::filesystem::exists(print_data._3mf_path)) {
+        show_error(this, _L("Failed to prepare the print file for Bambuddy."), false);
+        restore_buttons();
+        return;
+    }
+
+    BambuddyPrintOptions options;
+    const auto option_is_on = [this](const std::string &name) {
+        auto it = m_checkbox_list.find(name);
+        return it != m_checkbox_list.end() && it->second != nullptr && it->second->IsShown() && it->second->getValue() == "on";
+    };
+    options.bed_levelling = option_is_on("bed_leveling");
+    options.flow_cali     = option_is_on("flow_cali");
+    options.timelapse     = option_is_on("timelapse");
+
+    BambuddyClient       client(config);
+    BambuddyUploadResult upload;
+    BambuddyQueueResult  queue;
+    std::string          error;
+
+    wxString msg = _L("Uploading to Bambuddy");
+    bool cancelled = false;
+    m_status_bar->update_status(msg, cancelled, 20, true);
+    if (!client.upload_file(print_data._3mf_path, upload, error, [this](int percent) {
+            wxString upload_msg = _L("Uploading to Bambuddy");
+            bool upload_cancelled = false;
+            m_status_bar->update_status(upload_msg, upload_cancelled, 20 + (percent * 60 / 100), true);
+        })) {
+        show_error(this, from_u8(error), false);
+        restore_buttons();
+        return;
+    }
+
+    if (queue_print) {
+        msg = _L("Creating Bambuddy print queue item");
+        m_status_bar->update_status(msg, cancelled, 85, true);
+        if (!client.enqueue_print(upload.library_file_id, selected_printer_id, options, queue, error)) {
+            show_error(this, from_u8(error), false);
+            restore_buttons();
+            return;
+        }
+    }
+
+    msg = queue_print ? _L("Print was sent to Bambuddy") : _L("File was uploaded to Bambuddy");
+    m_status_bar->update_status(msg, cancelled, 100, true);
+
+    const std::string target_url = BambuddyClient::build_page_url(config, queue_print ? "queue" : "archives");
+    if (!target_url.empty())
+        wxLaunchDefaultBrowser(from_u8(target_url));
+
+    if (queue_print) {
+        wxString printer = selected_printer_name.empty() ? wxString::Format("#%d", selected_printer_id) : from_u8(selected_printer_name);
+        show_info(this, _L("Print was sent to Bambuddy for printer ") + printer + ".", _L("Bambuddy"));
+    } else {
+        show_info(this, _L("File was uploaded to Bambuddy archives."), _L("Bambuddy"));
+    }
+
+    prepare_mode(true);
+    if (IsModal())
+        EndModal(wxID_OK);
+    else
+        Hide();
 }
 wxString SelectMachineDialog::format_steel_name(NozzleType type)
 {
@@ -3856,6 +4139,60 @@ void SelectMachineDialog::update_bambu_connect_button_visibility()
     }
 }
 
+void SelectMachineDialog::update_bambuddy_button_visibility()
+{
+    update_bambuddy_controls();
+}
+
+void SelectMachineDialog::update_bambuddy_controls()
+{
+    const bool normal_print = m_print_type == PrintFromType::FROM_NORMAL;
+    BambuddyConfig config;
+    if (wxGetApp().app_config)
+        config = BambuddyClient::load_from_app_config(*wxGetApp().app_config);
+    const bool configured = normal_print && config.enabled && !config.base_url.empty();
+
+    bool relayout = false;
+    const auto show_if_changed = [&relayout](wxWindow *window, bool show) {
+        if (!window)
+            return;
+        if (window->IsShown() != show) {
+            window->Show(show);
+            relayout = true;
+        }
+        window->Enable(show);
+    };
+
+    show_if_changed(m_button_bambuddy, normal_print);
+    show_if_changed(m_button_print_bambuddy, normal_print);
+    show_if_changed(m_button_bambuddy_settings, normal_print);
+    show_if_changed(m_panel_bambuddy_controls, configured);
+    show_if_changed(m_panel_bambuddy_links, configured);
+
+    if (configured) {
+        if (m_link_bambuddy_archives)
+            m_link_bambuddy_archives->SetURL(from_u8(BambuddyClient::build_page_url(config, "archives")));
+        if (m_link_bambuddy_queue)
+            m_link_bambuddy_queue->SetURL(from_u8(BambuddyClient::build_page_url(config, "queue")));
+
+        if (m_choice_bambuddy_printer && m_choice_bambuddy_printer->GetCount() == 0 && config.default_printer_id > 0) {
+            m_bambuddy_printers.clear();
+            BambuddyPrinterChoice printer;
+            printer.id = config.default_printer_id;
+            printer.name = config.default_printer_name;
+            m_bambuddy_printers.push_back(std::move(printer));
+            m_choice_bambuddy_printer->Append(format_bambuddy_printer_label(m_bambuddy_printers.front()));
+            m_choice_bambuddy_printer->SetSelection(0);
+        }
+    }
+
+    if (relayout) {
+        if (m_panel_prepare)
+            m_panel_prepare->Layout();
+        Layout();
+    }
+}
+
 std::string SelectMachineDialog::build_bambu_connect_uri(const std::string& file_path) const
 {
     if (file_path.empty())
@@ -3908,6 +4245,12 @@ void SelectMachineDialog::on_dpi_changed(const wxRect &suggested_rect)
     m_button_ensure->Rescale(); // ORCA
     if (m_button_bambu_connect)
         m_button_bambu_connect->Rescale();
+    if (m_button_bambuddy)
+        m_button_bambuddy->Rescale();
+    if (m_button_print_bambuddy)
+        m_button_print_bambuddy->Rescale();
+    if (m_button_bambuddy_settings)
+        m_button_bambuddy_settings->Rescale();
     m_status_bar->msw_rescale();
 
     for (auto material1 : m_materialList) {

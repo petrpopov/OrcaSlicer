@@ -55,6 +55,7 @@
 // Previous definitions
 namespace Slic3r{
     class DevExtder;
+    struct BambuddyConfig;
 }
 
 namespace Slic3r { namespace GUI {
@@ -70,6 +71,12 @@ enum PrintPageMode {
     PrintPageModePrepare = 0,
     PrintPageModeSending,
     PrintPageModeFinish
+};
+
+struct BambuddyPrinterChoice
+{
+    int         id{0};
+    std::string name;
 };
 
 
@@ -109,7 +116,7 @@ using MaterialHash = std::map<int, Material *>;
 #define SELECT_MACHINE_DIALOG_BUTTON_SIZE wxSize(FromDIP(57), FromDIP(32))
 #define SELECT_MACHINE_DIALOG_BUTTON_SIZE2 wxSize(FromDIP(80), FromDIP(32))
 #define SELECT_MACHINE_DIALOG_SIMBOOK_SIZE wxSize(FromDIP(370), FromDIP(64))
-#define SELECT_MACHINE_DIALOG_SIMBOOK_SIZE2 wxSize(FromDIP(645), FromDIP(32))
+#define SELECT_MACHINE_DIALOG_SIMBOOK_SIZE2 wxSize(FromDIP(645), FromDIP(76))
 #define LIST_REFRESH_INTERVAL 200
 static int get_brightness_value(wxImage image) {
 
@@ -356,6 +363,14 @@ protected:
     wxBoxSizer*                         m_change_filament_times_sizer{ nullptr };
     wxBoxSizer*                         m_sizer_action_buttons{ nullptr };
     Button*                             m_button_bambu_connect{ nullptr };
+    Button*                             m_button_bambuddy{ nullptr };
+    Button*                             m_button_print_bambuddy{ nullptr };
+    Button*                             m_button_bambuddy_settings{ nullptr };
+    wxPanel*                            m_panel_bambuddy_controls{ nullptr };
+    wxChoice*                           m_choice_bambuddy_printer{ nullptr };
+    wxPanel*                            m_panel_bambuddy_links{ nullptr };
+    wxHyperlinkCtrl*                    m_link_bambuddy_archives{ nullptr };
+    wxHyperlinkCtrl*                    m_link_bambuddy_queue{ nullptr };
     Button*                             m_button_ensure{ nullptr };
     wxStaticBitmap *                    m_rename_button{nullptr};
     wxStaticBitmap*                     m_staticbitmap{ nullptr };
@@ -371,6 +386,7 @@ protected:
     wxPanel*                            m_panel_finish{nullptr};
 
     wxScrolledWindow*                   m_scroll_area{nullptr};
+    std::vector<BambuddyPrinterChoice>   m_bambuddy_printers;
 
     wxPanel*                            m_line_top{ nullptr };
     Label*                              m_link_edit_nozzle{ nullptr };
@@ -467,6 +483,13 @@ public:
     void show_errors(wxString& info);
     void on_ok_btn(wxCommandEvent& event);
     void on_bambu_connect_btn(wxCommandEvent& event);
+    void on_bambuddy_btn(wxCommandEvent& event);
+    void on_print_bambuddy_btn(wxCommandEvent& event);
+    void on_bambuddy_settings_btn(wxCommandEvent& event);
+    void send_to_bambuddy(bool queue_print);
+    void update_bambuddy_controls();
+    void refresh_bambuddy_printers(bool show_errors = false);
+    int  selected_bambuddy_printer_id(const BambuddyConfig& config, std::string* name = nullptr) const;
     void Enable_Auto_Refill(bool enable);
     void on_send_print();
     void clear_ip_address_config(wxCommandEvent& e);
@@ -536,6 +559,7 @@ private:
     // enbale or disable external change assist
     bool is_enable_external_change_assist(std::vector<FilamentInfo>& ams_mapping_result);
     void update_bambu_connect_button_visibility();
+    void update_bambuddy_button_visibility();
     std::string build_bambu_connect_uri(const std::string& file_path) const;
     bool launch_bambu_connect_uri(const std::string& uri) const;
 };
