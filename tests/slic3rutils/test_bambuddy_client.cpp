@@ -92,6 +92,12 @@ TEST_CASE("Bambuddy queue payload uses library file and printer", "[BambuddyClie
     REQUIRE(body.find("\"timelapse\":true") != std::string::npos);
 }
 
+TEST_CASE("Bambuddy upload filename normalizes Orca 3MF export", "[BambuddyClient]")
+{
+    REQUIRE(Slic3r::BambuddyClient::upload_filename_for_path("/tmp/v_ahue_plate_1.3mf") == "v_ahue_plate_1.gcode.3mf");
+    REQUIRE(Slic3r::BambuddyClient::upload_filename_for_path("/tmp/v_ahue_plate_1.gcode.3mf") == "v_ahue_plate_1.gcode.3mf");
+}
+
 TEST_CASE("Bambuddy custom headers serialize round trip", "[BambuddyClient]")
 {
     std::map<std::string, std::string> headers;

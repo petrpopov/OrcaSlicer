@@ -307,6 +307,21 @@ std::string BambuddyClient::build_queue_body(int library_file_id, int printer_id
     return body.dump();
 }
 
+std::string BambuddyClient::upload_filename_for_path(const boost::filesystem::path &path)
+{
+    const std::string filename = path.filename().string();
+    const std::string lower_filename = lowercase_copy(filename);
+    if (ends_with(lower_filename, ".gcode.3mf"))
+        return filename;
+    if (ends_with(lower_filename, ".3mf"))
+        return filename.substr(0, filename.size() - 4) + ".gcode.3mf";
+    return {};
+}
+
+std::string BambuddyClient::upload_filename_for_path(const std::string &path)
+{
+    return upload_filename_for_path(boost::filesystem::path(path));
+}
 
 BambuddyClient::BambuddyClient(BambuddyConfig config) : m_config(std::move(config)) {}
 
@@ -350,10 +365,9 @@ bool BambuddyClient::upload_file(const boost::filesystem::path &path, BambuddyUp
         return false;
     }
 
-    const std::string filename = path.filename().string();
-    const std::string lower_filename = lowercase_copy(filename);
-    if (!ends_with(lower_filename, ".gcode.3mf")) {
-        error = "Bambuddy requires a sliced .gcode.3mf file.";
+    const std::string filename = upload_filename_for_path(path);
+    if (filename.empty()) {
+        error = "Bambuddy requires a sliced .3mf or .gcode.3mf file.";
         return false;
     }
 

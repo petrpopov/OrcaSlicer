@@ -75,6 +75,8 @@ public:
     static std::map<std::string, std::string> parse_custom_headers(const std::string &serialized);
     static std::string proxy_auth_mode_to_string(BambuddyProxyAuthMode mode);
     static BambuddyProxyAuthMode proxy_auth_mode_from_string(const std::string &value);
+    static std::string upload_filename_for_path(const boost::filesystem::path &path);
+    static std::string upload_filename_for_path(const std::string &path);
 
     static BambuddyConfig load_from_app_config(const AppConfig &app_config);
     static void save_to_app_config(AppConfig &app_config, const BambuddyConfig &config);

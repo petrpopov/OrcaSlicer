@@ -115,8 +115,8 @@ void BambuddySettingsDialog::build_ui()
     m_base_url = add_text_row(this, grid, _L("Bambuddy URL"));
     m_base_url->SetToolTip(_L("Example: https://bambuddy.ezheg.xyz"));
 
-    m_api_key = add_text_row(this, grid, _L("API token"), wxTE_PASSWORD);
-    m_api_key->SetToolTip(_L("Bambuddy API token. Leave empty only if your Bambuddy instance allows it."));
+    m_api_key = add_text_row(this, grid, _L("Bambuddy API key"), wxTE_PASSWORD);
+    m_api_key->SetToolTip(_L("Bambuddy API key. Leave empty only if your Bambuddy instance allows it."));
 
     grid->Add(new wxStaticText(this, wxID_ANY, _L("Default printer")), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT | wxBOTTOM, 8);
     auto printer_sizer = new wxBoxSizer(wxHORIZONTAL);
@@ -137,9 +137,10 @@ void BambuddySettingsDialog::build_ui()
     m_proxy_mode->Append(_L("Custom headers"));
     grid->Add(m_proxy_mode, 1, wxEXPAND | wxBOTTOM, 8);
 
-    m_pangolin_token_id     = add_text_row(this, grid, _L("Pangolin token ID"));
-    m_pangolin_token_secret = add_text_row(this, grid, _L("Pangolin token"), wxTE_PASSWORD);
+    m_pangolin_token_id     = add_text_row(this, grid, _L("P-Access-Token-Id"));
+    m_pangolin_token_secret = add_text_row(this, grid, _L("P-Access-Token"), wxTE_PASSWORD);
     m_pangolin_query_token  = add_text_row(this, grid, _L("Pangolin p_token"), wxTE_PASSWORD);
+    m_pangolin_query_token->SetToolTip(_L("Use the query token in the form token_id.token."));
 
     grid->Add(new wxStaticText(this, wxID_ANY, _L("Custom headers")), 0, wxALIGN_TOP | wxRIGHT | wxBOTTOM, 8);
     m_custom_headers = new wxTextCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(360, 90), wxTE_MULTILINE);
