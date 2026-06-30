@@ -707,16 +707,17 @@ SelectMachineDialog::SelectMachineDialog(Plater *plater)
     auto bambuddy_printer_label = new wxStaticText(m_panel_bambuddy_controls, wxID_ANY, _L("Bambuddy printer"));
     m_choice_bambuddy_printer = new wxChoice(m_panel_bambuddy_controls, wxID_ANY, wxDefaultPosition, wxSize(FromDIP(250), -1));
     sizer_bambuddy_controls->Add(bambuddy_printer_label, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(8));
-    sizer_bambuddy_controls->Add(m_choice_bambuddy_printer, 0, wxALIGN_CENTER_VERTICAL);
+    sizer_bambuddy_controls->Add(m_choice_bambuddy_printer, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(16));
     m_panel_bambuddy_controls->SetSizer(sizer_bambuddy_controls);
 
-    m_panel_bambuddy_links = new wxPanel(m_panel_prepare, wxID_ANY);
+    m_panel_bambuddy_links = new wxPanel(m_panel_bambuddy_controls, wxID_ANY);
     auto sizer_bambuddy_links = new wxBoxSizer(wxHORIZONTAL);
     m_link_bambuddy_archives = new wxHyperlinkCtrl(m_panel_bambuddy_links, wxID_ANY, _L("Archives"), wxEmptyString);
     m_link_bambuddy_queue = new wxHyperlinkCtrl(m_panel_bambuddy_links, wxID_ANY, _L("Print Queue"), wxEmptyString);
     sizer_bambuddy_links->Add(m_link_bambuddy_archives, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(16));
     sizer_bambuddy_links->Add(m_link_bambuddy_queue, 0, wxALIGN_CENTER_VERTICAL);
     m_panel_bambuddy_links->SetSizer(sizer_bambuddy_links);
+    sizer_bambuddy_controls->Add(m_panel_bambuddy_links, 0, wxALIGN_CENTER_VERTICAL);
 
     m_sizer_action_buttons = new wxBoxSizer(wxHORIZONTAL);
     m_sizer_action_buttons->Add(m_button_bambu_connect, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(8));
@@ -727,7 +728,6 @@ SelectMachineDialog::SelectMachineDialog(Plater *plater)
 
     m_sizer_pcont->Add(0, 0, 1, wxEXPAND, 0);
     m_sizer_pcont->Add(m_panel_bambuddy_controls, 0, wxALIGN_CENTER | wxBOTTOM, FromDIP(6));
-    m_sizer_pcont->Add(m_panel_bambuddy_links, 0, wxALIGN_CENTER | wxBOTTOM, FromDIP(8));
     m_sizer_pcont->Add(m_sizer_action_buttons, 0, wxALIGN_CENTER, 0);
 
     m_sizer_prepare->Add(0, 0, 1, wxTOP, FromDIP(12));
