@@ -116,6 +116,50 @@ std::string BambuddyClient::build_api_url(const BambuddyConfig &config, const st
     return url;
 }
 
+std::string BambuddyClient::build_page_url(const BambuddyConfig &config, const std::string &page_path)
+{
+    std::string url = trim_copy(config.base_url);
+
+    std::string fragment;
+    if (const size_t hash_pos = url.find('#'); hash_pos != std::string::npos) {
+        fragment = url.substr(hash_pos);
+        url.erase(hash_pos);
+    }
+
+    std::string query;
+    if (const size_t query_pos = url.find('?'); query_pos != std::string::npos) {
+        query = url.substr(query_pos + 1);
+        url.erase(query_pos);
+    }
+
+    while (!url.empty() && url.back() == '/')
+        url.pop_back();
+
+    if (!page_path.empty() && page_path.front() == '/')
+        url += page_path;
+    else
+        url += "/" + page_path;
+
+    std::string browser_query_token;
+    if (config.proxy_auth.mode == BambuddyProxyAuthMode::PangolinQueryToken) {
+        browser_query_token = config.proxy_auth.pangolin_query_token;
+    } else if (config.proxy_auth.mode == BambuddyProxyAuthMode::PangolinHeaders &&
+               !config.proxy_auth.pangolin_token_id.empty() && !config.proxy_auth.pangolin_token_secret.empty()) {
+        browser_query_token = config.proxy_auth.pangolin_token_id + "." + config.proxy_auth.pangolin_token_secret;
+    }
+
+    if (!browser_query_token.empty()) {
+        if (!query.empty())
+            query += '&';
+        query += "p_token=" + percent_encode(browser_query_token);
+    }
+
+    if (!query.empty())
+        url += "?" + query;
+    url += fragment;
+    return url;
+}
+
 std::map<std::string, std::string> BambuddyClient::build_headers(const BambuddyConfig &config)
 {
     std::map<std::string, std::string> headers;
@@ -357,7 +401,7 @@ bool BambuddyClient::list_printers(std::vector<BambuddyPrinter> &printers, std::
     return success;
 }
 
-bool BambuddyClient::upload_file(const boost::filesystem::path &path, BambuddyUploadResult &result, std::string &error) const
+bool BambuddyClient::upload_file(const boost::filesystem::path &path, BambuddyUploadResult &result, std::string &error, ProgressFn progress_fn) const
 {
     result = BambuddyUploadResult{};
     if (path.empty() || !boost::filesystem::exists(path)) {
@@ -377,6 +421,13 @@ bool BambuddyClient::upload_file(const boost::filesystem::path &path, BambuddyUp
     auto http = Http::post(url);
     apply_headers(http, m_config);
     http.form_add_file("file", path, filename)
+        .on_progress([&](Http::Progress progress, bool &) {
+            if (progress_fn && progress.ultotal > 0) {
+                const auto raw_percent = progress.ulnow * 100 / progress.ultotal;
+                const int percent = static_cast<int>(std::min<decltype(raw_percent)>(100, raw_percent));
+                progress_fn(percent);
+            }
+        })
         .on_complete([&](std::string body, unsigned) {
             if (looks_like_html_login(body)) {
                 error = "Reverse proxy authentication failed; check Pangolin/custom auth settings.";

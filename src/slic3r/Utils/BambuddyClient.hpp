@@ -2,6 +2,7 @@
 #define slic3r_BambuddyClient_hpp_
 
 #include <map>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -66,9 +67,12 @@ struct BambuddyPrintOptions
 class BambuddyClient
 {
 public:
+    using ProgressFn = std::function<void(int)>;
+
     explicit BambuddyClient(BambuddyConfig config);
 
     static std::string build_api_url(const BambuddyConfig &config, const std::string &api_path);
+    static std::string build_page_url(const BambuddyConfig &config, const std::string &page_path);
     static std::map<std::string, std::string> build_headers(const BambuddyConfig &config);
     static bool looks_like_html_login(const std::string &body, const std::string &content_type = {});
     static std::string serialize_custom_headers(const std::map<std::string, std::string> &headers);
@@ -88,7 +92,7 @@ public:
 
     bool test_connection(std::string &error) const;
     bool list_printers(std::vector<BambuddyPrinter> &printers, std::string &error) const;
-    bool upload_file(const boost::filesystem::path &path, BambuddyUploadResult &result, std::string &error) const;
+    bool upload_file(const boost::filesystem::path &path, BambuddyUploadResult &result, std::string &error, ProgressFn progress_fn = {}) const;
     bool enqueue_print(int library_file_id, int printer_id, const BambuddyPrintOptions &options, BambuddyQueueResult &result,
                        std::string &error) const;
 

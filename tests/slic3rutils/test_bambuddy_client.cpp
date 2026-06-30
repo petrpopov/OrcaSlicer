@@ -23,6 +23,29 @@ TEST_CASE("Bambuddy Pangolin query token preserves existing query", "[BambuddyCl
     REQUIRE(url.find("p_token=secret") != std::string::npos);
 }
 
+TEST_CASE("Bambuddy page URL joins base and page with Pangolin query token", "[BambuddyClient]")
+{
+    Slic3r::BambuddyConfig cfg;
+    cfg.base_url = "https://bambuddy.ezheg.xyz/";
+    REQUIRE(Slic3r::BambuddyClient::build_page_url(cfg, "archives") == "https://bambuddy.ezheg.xyz/archives");
+
+    cfg.base_url = "https://bambuddy.ezheg.xyz?foo=bar";
+    cfg.proxy_auth.mode = Slic3r::BambuddyProxyAuthMode::PangolinQueryToken;
+    cfg.proxy_auth.pangolin_query_token = "id.token";
+
+    const std::string url = Slic3r::BambuddyClient::build_page_url(cfg, "/queue");
+    REQUIRE(url.find("https://bambuddy.ezheg.xyz/queue?") == 0);
+    REQUIRE(url.find("foo=bar") != std::string::npos);
+    REQUIRE(url.find("p_token=id.token") != std::string::npos);
+
+    cfg.base_url = "https://bambuddy.ezheg.xyz/";
+    cfg.proxy_auth.mode = Slic3r::BambuddyProxyAuthMode::PangolinHeaders;
+    cfg.proxy_auth.pangolin_token_id = "id";
+    cfg.proxy_auth.pangolin_token_secret = "secret";
+    REQUIRE(Slic3r::BambuddyClient::build_page_url(cfg, "queue") ==
+            "https://bambuddy.ezheg.xyz/queue?p_token=id.secret");
+}
+
 TEST_CASE("Bambuddy headers include API key and Pangolin header token", "[BambuddyClient]")
 {
     Slic3r::BambuddyConfig cfg;
