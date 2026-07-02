@@ -11,7 +11,10 @@ if (MSVC)
 endif ()
 
 target_link_libraries(${_TEST_NAME}_tests test_common libslic3r_gui libslic3r Catch2::Catch2WithMain)
-target_include_directories(${_TEST_NAME}_tests PRIVATE ${wxWidgets_INCLUDE_DIRS})
+get_target_property(_libslic3r_gui_include_dirs libslic3r_gui INCLUDE_DIRECTORIES)
+if (_libslic3r_gui_include_dirs)
+    target_include_directories(${_TEST_NAME}_tests PRIVATE ${_libslic3r_gui_include_dirs})
+endif ()
 set_property(TARGET ${_TEST_NAME}_tests PROPERTY FOLDER "tests")
 
 orcaslicer_copy_test_dlls()
