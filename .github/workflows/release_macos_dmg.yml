@@ -169,6 +169,8 @@ jobs:
       - name: Create DMG
         shell: bash
         run: |
+          source scripts/retry.sh
+
           DMG_DIR="${{ github.workspace }}/build/universal/OrcaSlicer_dmg"
           APP_PATH="${{ github.workspace }}/build/universal/OrcaSlicer/${APP_BUNDLE_NAME}.app"
 
@@ -177,7 +179,7 @@ jobs:
           cp -R "$APP_PATH" "$DMG_DIR/"
           ln -sfn /Applications "$DMG_DIR/Applications"
 
-          hdiutil create -volname "${APP_BUNDLE_NAME}" -srcfolder "$DMG_DIR" -ov -format UDZO "${DMG_NAME}"
+          retry hdiutil create -volname "${APP_BUNDLE_NAME}" -srcfolder "$DMG_DIR" -ov -format UDZO "${DMG_NAME}"
 
       - name: Sign DMG
         if: ${{ (github.event_name == 'push' || inputs.notarize) && steps.signing_state.outputs.can_sign == 'true' }}
