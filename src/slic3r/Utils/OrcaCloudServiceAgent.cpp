@@ -72,7 +72,10 @@ constexpr const char* CONFIG_ORCA_AUTH_URL = "orca_auth_url";
 constexpr const char* CONFIG_ORCA_CLOUD_URL = "orca_cloud_url";
 constexpr const char* CONFIG_ORCA_PUB_KEY = "orca_pub_key";
 
-constexpr const char* SECRET_STORE_SERVICE = "OrcaSlicer/Auth";
+// Keep the PE fork in a separate Keychain item from upstream OrcaSlicer.
+// If both apps use the same service, macOS rewrites the item's access control
+// when one app is granted access, causing the other app to prompt again.
+constexpr const char* SECRET_STORE_SERVICE = "OrcaSlicerPE/Auth";
 constexpr const char* SECRET_STORE_USER    = "orca_refresh_token";
 constexpr std::chrono::seconds TOKEN_REFRESH_SKEW{900}; // 15 minutes
 
@@ -393,6 +396,11 @@ OrcaCloudServiceAgent::~OrcaCloudServiceAgent()
     if (refresh_thread.joinable()) {
         refresh_thread.join();
     }
+}
+
+const char* OrcaCloudServiceAgent::secret_store_service_name()
+{
+    return SECRET_STORE_SERVICE;
 }
 
 std::string OrcaCloudServiceAgent::generate_uuid_for_setting_id(const std::string& name, const std::string& user_id)
@@ -1505,7 +1513,7 @@ void OrcaCloudServiceAgent::persist_user_secret(const std::string& secret)
         wxSecretStore store = wxSecretStore::GetDefault();
         if (store.IsOk()) {
             wxSecretValue secret_value(wxString::FromUTF8(secret.c_str()));
-            if (store.Save(SECRET_STORE_SERVICE, SECRET_STORE_USER, secret_value)) {
+            if (store.Save(secret_store_service_name(), SECRET_STORE_USER, secret_value)) {
                 stored = true;
             } else {
                 BOOST_LOG_TRIVIAL(warning) << "OrcaCloudServiceAgent: System Keychain save failed";
@@ -1569,7 +1577,7 @@ bool OrcaCloudServiceAgent::load_user_secret(std::string& out_secret)
         if (store.IsOk()) {
             wxString username;
             wxSecretValue secret;
-            if (store.Load(SECRET_STORE_SERVICE, username, secret) && secret.IsOk()) {
+            if (store.Load(secret_store_service_name(), username, secret) && secret.IsOk()) {
                 out_secret.assign(static_cast<const char*>(secret.GetData()), secret.GetSize());
                 if (!out_secret.empty()) {
                     return true;
@@ -1585,7 +1593,7 @@ void OrcaCloudServiceAgent::clear_user_secret()
 {
     wxSecretStore store = wxSecretStore::GetDefault();
     if (store.IsOk()) {
-        store.Delete(SECRET_STORE_SERVICE);
+        store.Delete(secret_store_service_name());
     }
 
     compute_fallback_path();

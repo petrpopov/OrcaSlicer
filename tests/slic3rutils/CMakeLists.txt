@@ -4,6 +4,7 @@ add_executable(${_TEST_NAME}_tests
     test_download_path_utils.cpp
     test_update_version_parsing.cpp
     test_bambuddy_client.cpp
+    test_orca_cloud_keychain.cpp
     )
 
 if (MSVC)

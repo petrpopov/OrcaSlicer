@@ -127,6 +127,7 @@ public:
     void set_auth_base_url(const std::string& url);
     void set_cloud_base_url(const std::string& url);
     std::string get_cloud_base_url() const { return cloud_base_url; }
+    static const char* secret_store_service_name();
     void set_use_encrypted_token_file(bool use);
     bool get_use_encrypted_token_file() const;
 
