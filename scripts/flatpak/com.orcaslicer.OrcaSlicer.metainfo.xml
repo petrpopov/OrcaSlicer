@@ -45,8 +45,8 @@
         <color type="primary" scheme_preference="dark">#00695C</color>
     </branding>
     <releases>
-        <release version="2.4.1.1" date="2026-07-01">
-            <url type="details">https://github.com/petrpopov/OrcaSlicer/releases/tag/2.4.1.1</url>
+        <release version="2.4.2" date="2026-08-16">
+            <url type="details">https://github.com/petrpopov/OrcaSlicer/releases/tag/2.4.2</url>
             <description>
                 <p>See the release page for detailed changelog.</p>
             </description>

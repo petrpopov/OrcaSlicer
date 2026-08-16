@@ -69,7 +69,7 @@ xattr -dr com.apple.quarantine "/Applications/OrcaSlicerPE.app"
 ## Скачать
 
 - Релизы этого форка: [GitHub Releases](https://github.com/petrpopov/OrcaSlicer/releases)
-- Текущая версия форка: 2.4.1
+- Текущая версия форка: 2.4.2
 - Подробная wiki-страница: [Установка и первая печать (RU)](doc/peter-edition/wiki/installation-and-first-print.ru.md)
 
 ## Лицензия и атрибуция

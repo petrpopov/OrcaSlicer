@@ -49,6 +49,15 @@ endfunction()
 
 # Register Catch2 tags as CTest labels so `ctest -L`/`-LE` can filter by tag.
 function(orcaslicer_discover_tests TARGET)
+    # Unit tests must remain plain executables on macOS. The top-level project
+    # enables CMAKE_MACOSX_BUNDLE for the application, but unsigned test app
+    # bundles are killed by recent macOS versions during Catch2 discovery.
+    if (APPLE)
+        set_target_properties(${TARGET} PROPERTIES MACOSX_BUNDLE FALSE)
+        add_custom_command(TARGET ${TARGET} POST_BUILD
+            COMMAND /usr/bin/codesign --force --sign - "$<TARGET_FILE:${TARGET}>"
+            VERBATIM)
+    endif()
     catch_discover_tests(${TARGET} ADD_TAGS_AS_LABELS)
 endfunction()
 
@@ -57,5 +66,3 @@ add_subdirectory(libslic3r)
 add_subdirectory(slic3rutils)
 add_subdirectory(fff_print)
 add_subdirectory(sla_print)
-
-
